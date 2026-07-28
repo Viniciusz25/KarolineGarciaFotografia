@@ -81,10 +81,11 @@ export default function MasonryGallery({ photos }: MasonryGalleryProps) {
           >
             {/* Close Button */}
             <button
-              className="absolute top-6 right-6 text-white/70 hover:text-white z-50 p-2"
+              className="absolute top-4 right-4 md:top-6 md:right-6 text-white hover:text-white transition-colors bg-black/50 hover:bg-black/70 p-2 md:p-3 rounded-full backdrop-blur-md z-50 shadow-lg border border-white/10"
               onClick={closeLightbox}
+              aria-label="Fechar modal"
             >
-              <X size={32} />
+              <X size={24} className="md:w-8 md:h-8" />
             </button>
 
             {/* Navigation Buttons */}

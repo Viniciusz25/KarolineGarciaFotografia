@@ -1,107 +1,284 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { Heart, Camera, Users, Star, ArrowRight, Quote, ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+
+const defaultSettings = {
+  sobre_hero_bg: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?q=80&w=2000&auto=format&fit=crop",
+  sobre_image_1: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&auto=format&fit=crop",
+  sobre_image_2: "https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=1000&auto=format&fit=crop",
+  sobre_image_3: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=1000&auto=format&fit=crop",
+};
 
 export default function SobrePage() {
-  return (
-    <div className="pt-32 pb-24 bg-background min-h-screen overflow-hidden">
-      <div className="container mx-auto px-6 md:px-12">
-        
-        {/* Section 1: Sobre Mim (Texto Esquerda, Foto Direita) */}
-        <div className="flex flex-col-reverse lg:flex-row items-center gap-16 mb-32">
-          
-          {/* Text Section (Left) */}
-          <div className="w-full lg:w-1/2">
-            <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-6">
-              Olá, eu sou a Karoline
-            </h1>
-            <p className="text-lg text-muted-foreground mb-6 font-light leading-relaxed">
-              Sou apaixonada por contar histórias através da luz. Minha jornada na fotografia começou com a vontade de congelar o tempo e guardar os sentimentos mais genuínos que vivemos nos ensaios sociais.
-            </p>
-            <p className="text-lg text-muted-foreground mb-8 font-light leading-relaxed">
-              Busco um olhar sensível, natural e atemporal. Minha edição é leve, valorizando cores quentes, contrastes suaves e a beleza real de cada momento. Quero que daqui a 20 anos, você olhe para suas fotos e sinta a mesma emoção daquele dia.
-            </p>
+  const [settings, setSettings] = useState(defaultSettings);
 
-            <Link
-              href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center bg-primary text-primary-foreground px-8 py-3 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              <MessageCircle className="mr-2 w-5 h-5" />
-              Vamos criar juntos
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await supabase.from("site_settings").select("*").eq("section", "Sobre");
+      if (data && data.length > 0) {
+        const newSettings = { ...defaultSettings };
+        data.forEach(item => {
+          newSettings[item.key as keyof typeof defaultSettings] = item.url;
+        });
+        setSettings(newSettings);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  return (
+    <div className="w-full bg-[#120f0e] text-[#f4ede8] min-h-screen flex flex-col font-sans">
+      
+      {/* 1. HERO - SOBRE MIM */}
+      <section className="relative w-full min-h-screen flex items-center pt-24 md:pt-0">
+        <div className="container mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center gap-12 md:gap-24 relative z-10">
+          
+          <div className="flex-1 flex flex-col justify-center pb-12 md:pb-0">
+            <span className="font-serif italic text-3xl text-[#cba37b] mb-4 block opacity-80">Sobre mim</span>
+            <h1 className="text-4xl md:text-6xl font-serif text-[#f4ede8] mb-8 font-light leading-[1.1]">
+              Fotógrafa de<br/>
+              histórias reais e<br/>
+              sentimentos verdadeiros.
+            </h1>
+            <p className="text-white/60 font-light text-sm max-w-md mb-10 leading-relaxed">
+              Acredito que cada clique tem o poder de eternizar o que realmente importa: o amor, os laços e os momentos que vivemos ao lado de quem amamos.
+            </p>
+            
+            <Link href="/portfolio" className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white border border-white/20 px-8 py-4 rounded hover:border-[#cba37b] hover:text-[#cba37b] transition-colors self-start">
+              CONHEÇA MEU TRABALHO <ArrowRight className="ml-3 w-4 h-4" />
             </Link>
           </div>
 
-          {/* Image Section (Right) - Arco Normal */}
-          <div className="w-full lg:w-1/2 flex justify-center lg:justify-end">
-            <div className="relative aspect-[3/4] w-full max-w-sm overflow-hidden rounded-t-[1000px] shadow-2xl">
-              <Image
-                src="https://images.unsplash.com/photo-1554046920-90dcac471804?q=80&w=1500&auto=format&fit=crop"
-                alt="Karoline Garcia"
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
+          <div className="flex-1 w-full h-[60vh] md:h-screen relative">
+            <Image 
+              src={settings.sobre_hero_bg}
+              alt="Karoline Garcia" 
+              fill 
+              className="object-cover"
+              priority
+            />
+            {/* Gradiente para fundir imagem com fundo escuro */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#120f0e] via-transparent to-transparent hidden md:block" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#120f0e] via-transparent to-transparent md:hidden" />
           </div>
-
         </div>
+      </section>
 
-
-        {/* Section 2: Inspiração Pet (Foto Esquerda, Texto Direita) */}
-        <div className="flex flex-col lg:flex-row items-center gap-16 mb-32">
+      {/* 2. MINHA HISTÓRIA */}
+      <section className="py-24 md:py-32 bg-[#1a1715] relative overflow-hidden">
+        <div className="container mx-auto px-6 md:px-12">
           
-          {/* Image Section (Left) - Arco Normal */}
-          <div className="w-full lg:w-1/2 flex justify-center lg:justify-start">
-            <div className="relative aspect-[3/4] w-full max-w-sm overflow-hidden rounded-t-[1000px] shadow-2xl">
-              <Image
-                src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=1500&auto=format&fit=crop"
-                alt="Pets da Karol"
-                fill
-                className="object-cover"
-              />
+          <div className="flex flex-col lg:flex-row items-center gap-12 md:gap-20">
+            
+            {/* Foto Esquerda com Selo */}
+            <div className="w-full lg:w-1/3 relative aspect-[3/4] max-w-sm mx-auto">
+               <Image 
+                 src={settings.sobre_image_3}
+                 alt="História" 
+                 fill 
+                 className="object-cover rounded grayscale opacity-80"
+               />
+               
+               {/* Selo (Stamp) Simulado */}
+               <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-[#cba37b]/30 bg-[#1a1715]/80 backdrop-blur flex items-center justify-center flex-col text-[#cba37b] rotate-[-15deg]">
+                 <span className="font-serif text-2xl tracking-widest">KG</span>
+                 <span className="text-[6px] uppercase tracking-[0.2em] mt-1 text-center w-full block">Karoline Garcia<br/>Fotografia</span>
+               </div>
             </div>
-          </div>
 
-          {/* Text Section (Right) */}
-          <div className="w-full lg:w-1/2">
-            <h2 className="text-3xl md:text-4xl font-serif text-foreground mb-6">
-              Minha Grande Inspiração
-            </h2>
-            <p className="text-lg text-muted-foreground mb-6 font-light leading-relaxed">
-              O que realmente completou meu olhar na fotografia foram os meus próprios pets. Eles foram a minha grande inspiração para entrar de cabeça na <strong className="font-medium text-primary">fotografia pet</strong>. 
-            </p>
-            <p className="text-lg text-muted-foreground font-light leading-relaxed">
-              O amor incondicional, a pureza e a energia que eles trazem para a nossa vida me fizeram perceber que essas memórias também precisam ser eternizadas com a mesma sensibilidade, respeito e emoção de um ensaio de família.
-            </p>
-          </div>
+            {/* Texto Centro */}
+            <div className="w-full lg:w-1/3 text-center lg:text-left flex flex-col justify-center">
+               <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
+                 <span className="text-[10px] uppercase tracking-[0.3em] text-[#cba37b]">MINHA HISTÓRIA</span>
+                 <Heart size={10} className="text-[#cba37b]" />
+               </div>
+               <h2 className="text-3xl md:text-5xl font-serif text-[#f4ede8] mb-8 font-light">
+                 Mais do que fotos,<br/>
+                 eu crio <span className="italic text-[#cba37b]">memórias</span>.
+               </h2>
+               <p className="text-white/60 font-light text-sm mb-6 leading-relaxed">
+                 A fotografia entrou na minha vida como paixão e se transformou em propósito. Desde então, me dedico a contar histórias através de imagens que tocam, conectam e permanecem.
+               </p>
+               <p className="text-white/60 font-light text-sm leading-relaxed">
+                 Cada ensaio é feito com um olhar sensível, buscando a essência de cada pessoa, família ou pet, para que as lembranças sejam autênticas e eternas.
+               </p>
+            </div>
 
-        </div>
+            {/* Fotos Direita Empilhadas */}
+            <div className="w-full lg:w-1/3 flex flex-col gap-4 max-w-sm mx-auto">
+               <div className="relative aspect-video w-full rounded overflow-hidden">
+                  <Image src={settings.sobre_image_1} alt="Pet" fill className="object-cover opacity-90" />
+               </div>
+               <div className="relative aspect-video w-full rounded overflow-hidden">
+                  <Image src={settings.sobre_image_2} alt="Família" fill className="object-cover opacity-90" />
+               </div>
+            </div>
 
-        {/* Missão, Visão e Valores */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center bg-secondary p-12 rounded-2xl">
-          <div>
-            <h3 className="text-xl font-serif text-foreground mb-4 uppercase tracking-widest">Missão</h3>
-            <p className="text-muted-foreground font-light">
-              Eternizar momentos de forma autêntica e emocionante, entregando memórias visuais que toquem o coração das famílias e celebrem o amor em todas as suas formas, inclusive o amor pelos pets.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-xl font-serif text-foreground mb-4 uppercase tracking-widest">Visão</h3>
-            <p className="text-muted-foreground font-light">
-              Ser referência em fotografia social e pet, reconhecida pelo olhar sensível, qualidade premium de entrega e pela experiência acolhedora que proporciono a cada cliente.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-xl font-serif text-foreground mb-4 uppercase tracking-widest">Valores</h3>
-            <p className="text-muted-foreground font-light">
-              Sensibilidade, Autenticidade, Respeito, Excelência e Empatia. Cada ensaio é tratado de forma única e especial, respeitando o tempo e o limite de cada um.
-            </p>
           </div>
         </div>
+      </section>
 
-      </div>
+      {/* 3. MEUS VALORES (Claro) */}
+      <section className="bg-[#f2eee9] text-[#2d2422] py-20 relative overflow-hidden">
+        {/* Textura de fundo bem suave */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-multiply">
+           <Image src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" alt="texture" fill className="object-cover" />
+        </div>
+        
+        <div className="container mx-auto px-6 md:px-12 flex flex-col lg:flex-row items-center gap-12">
+           
+           <div className="flex-1 flex flex-col md:flex-row gap-12 md:items-center">
+              
+              <div className="shrink-0 flex flex-col items-center md:items-start text-center md:text-left md:border-r border-[#2d2422]/10 md:pr-12">
+                 <h2 className="text-[10px] uppercase tracking-[0.3em] font-medium mb-3">MEUS VALORES</h2>
+                 <Heart size={12} className="text-[#cba37b]" />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 flex-1">
+                 
+                 <div className="flex flex-col items-center text-center">
+                    <Heart size={24} className="text-[#cba37b] mb-4 font-light stroke-[1px]" />
+                    <h3 className="font-serif text-lg mb-2">Sensibilidade</h3>
+                    <p className="text-[10px] leading-relaxed text-[#2d2422]/60">Enxergar beleza nos detalhes e transformar emoções em imagens.</p>
+                 </div>
+                 
+                 <div className="flex flex-col items-center text-center">
+                    <Camera size={24} className="text-[#cba37b] mb-4 font-light stroke-[1px]" />
+                    <h3 className="font-serif text-lg mb-2">Excelência</h3>
+                    <p className="text-[10px] leading-relaxed text-[#2d2422]/60">Cuidar de cada etapa do ensaio para entregar resultados impecáveis.</p>
+                 </div>
+                 
+                 <div className="flex flex-col items-center text-center">
+                    <Users size={24} className="text-[#cba37b] mb-4 font-light stroke-[1px]" />
+                    <h3 className="font-serif text-lg mb-2">Conexão</h3>
+                    <p className="text-[10px] leading-relaxed text-[#2d2422]/60">Criar um ambiente leve e acolhedor para que tudo seja verdadeiro.</p>
+                 </div>
+                 
+                 <div className="flex flex-col items-center text-center">
+                    <Star size={24} className="text-[#cba37b] mb-4 font-light stroke-[1px]" />
+                    <h3 className="font-serif text-lg mb-2">Propósito</h3>
+                    <p className="text-[10px] leading-relaxed text-[#2d2422]/60">Registrar histórias que terão valor hoje e para as próximas gerações.</p>
+                 </div>
+
+              </div>
+
+           </div>
+
+           <div className="hidden lg:block shrink-0 relative w-80 aspect-video rounded-xl overflow-hidden shadow-2xl rotate-[-2deg]">
+              <Image src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=800&auto=format&fit=crop" alt="Câmera e Fotos" fill className="object-cover" />
+           </div>
+
+        </div>
+      </section>
+
+      {/* 4. MEU OLHAR (Escuro) */}
+      <section className="py-24 md:py-32 bg-[#120f0e]">
+         <div className="container mx-auto px-6 md:px-12 flex flex-col lg:flex-row gap-16 md:gap-24">
+            
+            <div className="w-full lg:w-1/3 flex flex-col justify-center">
+               <div className="flex items-center gap-4 mb-6">
+                 <span className="text-[10px] uppercase tracking-[0.3em] text-[#cba37b]">MEU OLHAR</span>
+                 <Heart size={10} className="text-[#cba37b]" />
+               </div>
+               
+               <h2 className="text-4xl md:text-5xl font-serif text-[#f4ede8] mb-8 font-light leading-tight">
+                 Natural, atemporal<br/>e cheio de <span className="italic">verdade</span>.
+               </h2>
+               
+               <p className="text-white/60 font-light text-sm mb-6 leading-relaxed">
+                 Meu trabalho é guiado pela luz natural, cores verdadeiras e composições que valorizam o que realmente importa.
+               </p>
+               <p className="text-white/60 font-light text-sm mb-12 leading-relaxed">
+                 Mais do que fotos bonitas, busco entregar imagens que façam você sentir tudo novamente.
+               </p>
+
+               <div className="flex flex-col gap-2">
+                  <span className="font-serif text-3xl md:text-4xl italic text-[#cba37b]/80">Karoline Garcia</span>
+                  <Heart size={14} className="text-[#cba37b] ml-16" />
+               </div>
+            </div>
+
+            <div className="w-full lg:w-2/3 grid grid-cols-1 md:grid-cols-3 gap-6">
+               
+               {/* Card 1 */}
+               <div className="relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 group">
+                  <Image src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=600&auto=format&fit=crop" alt="Fotografia Social" fill className="object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-6 left-0 right-0 text-center px-4">
+                     <h3 className="text-[10px] uppercase tracking-widest text-[#cba37b] mb-2 font-medium">FOTOGRAFIA SOCIAL</h3>
+                     <p className="text-[10px] text-white/70 leading-relaxed">Momentos que viram<br/>lembranças eternas.</p>
+                     <Heart size={8} className="text-white/30 mx-auto mt-3" />
+                  </div>
+               </div>
+
+               {/* Card 2 */}
+               <div className="relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 group md:-translate-y-8">
+                  <Image src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=600&auto=format&fit=crop" alt="Fotografia Pet" fill className="object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-6 left-0 right-0 text-center px-4">
+                     <h3 className="text-[10px] uppercase tracking-widest text-[#cba37b] mb-2 font-medium">FOTOGRAFIA PET</h3>
+                     <p className="text-[10px] text-white/70 leading-relaxed">Personalidade, amor e conexão<br/>em cada clique.</p>
+                     <Heart size={8} className="text-white/30 mx-auto mt-3" />
+                  </div>
+               </div>
+
+               {/* Card 3 */}
+               <div className="relative aspect-[3/4] rounded-lg overflow-hidden border border-white/5 group">
+                  <Image src="https://images.unsplash.com/photo-1519064438069-5c742354c0e6?q=80&w=600&auto=format&fit=crop" alt="Histórias Reais" fill className="object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute bottom-6 left-0 right-0 text-center px-4">
+                     <h3 className="text-[10px] uppercase tracking-widest text-[#cba37b] mb-2 font-medium">HISTÓRIAS REAIS</h3>
+                     <p className="text-[10px] text-white/70 leading-relaxed">Pessoas, famílias e pets.<br/>Histórias únicas.</p>
+                     <Heart size={8} className="text-white/30 mx-auto mt-3" />
+                  </div>
+               </div>
+
+            </div>
+         </div>
+      </section>
+
+      {/* 5. TESTEMUNHO (Claro) */}
+      <section className="bg-[#f0ece9] text-[#2d2422] py-24">
+         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16 max-w-4xl">
+            
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-[#cba37b] shrink-0 shadow-sm">
+               <Quote size={24} className="fill-current" />
+            </div>
+            
+            <div className="text-center md:text-left flex-1">
+               <h3 className="text-xl md:text-2xl font-serif leading-relaxed mb-8 text-[#2d2422]/90">
+                  "A Karoline tem um dom incrível de nos deixar à vontade e capturar aquilo que nem conseguimos colocar em palavras."
+               </h3>
+               
+               <div className="flex items-center justify-center md:justify-between flex-wrap gap-6">
+                  <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-full overflow-hidden relative shadow-md">
+                        <Image src="https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=200&auto=format&fit=crop" alt="Juliana & Rafael" fill className="object-cover" />
+                     </div>
+                     <div className="text-left">
+                        <span className="block text-sm font-medium">Juliana & Rafael</span>
+                        <span className="block text-[10px] uppercase tracking-widest text-[#2d2422]/50">Ensaio Gestante</span>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                     <button className="w-8 h-8 rounded-full border border-[#2d2422]/20 flex items-center justify-center hover:bg-[#2d2422] hover:text-white transition-colors">
+                        <ChevronLeft size={16} />
+                     </button>
+                     <button className="w-8 h-8 rounded-full border border-[#2d2422]/20 flex items-center justify-center hover:bg-[#2d2422] hover:text-white transition-colors">
+                        <ChevronRight size={16} />
+                     </button>
+                  </div>
+               </div>
+            </div>
+
+         </div>
+      </section>
+
     </div>
   );
 }

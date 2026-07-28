@@ -2,16 +2,16 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #4a3e3d;
+  --foreground: #2d2422;
   
-  --primary: #c49a86;
+  --primary: #cba37b;
   --primary-foreground: #ffffff;
   
-  --secondary: #f4ede8;
-  --secondary-foreground: #4a3e3d;
+  --secondary: #fcfaf8;
+  --secondary-foreground: #2d2422;
 
   --accent: #e5d8cf;
-  --muted: #f9f6f4;
+  --muted: #f4ede8;
   --muted-foreground: #8a7c78;
 }
 
