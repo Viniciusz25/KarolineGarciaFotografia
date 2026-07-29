@@ -24,9 +24,10 @@ export default function Navbar() {
     return null;
   }
 
-  // O usuário solicitou padronizar o header em todas as páginas:
-  // Transparente com texto branco no topo, e fundo branco com texto escuro ao rolar.
-  const useWhiteText = !isScrolled;
+  const isHome = pathname === "/";
+  // Na home, fica transparente no topo. Nas outras páginas (como Sobre que é clara), já começa com fundo sólido.
+  const showSolidBackground = isHome ? isScrolled : true;
+  const useWhiteText = isHome ? !isScrolled : false;
 
   useEffect(() => {
     const handleScroll = (e: Event) => {
@@ -55,7 +56,7 @@ export default function Navbar() {
       <header
         className={clsx(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-          isScrolled ? "bg-background/90 backdrop-blur-md shadow-sm py-4 border-b border-accent" : "bg-transparent py-6"
+          showSolidBackground ? "bg-background/90 backdrop-blur-md shadow-sm py-4 border-b border-accent" : "bg-transparent py-6"
         )}
       >
         <div className="container mx-auto px-6 md:px-12 flex items-center justify-between">

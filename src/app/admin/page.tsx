@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { LogOut, Upload, Trash2, Image as ImageIcon, Loader2, FolderPlus, Layers, Heart, Settings, Edit3, Grid, Eye, EyeOff, GripVertical } from "lucide-react";
@@ -21,6 +22,7 @@ type Category = {
   is_hidden?: boolean;
   order_index?: number;
   created_at: string;
+  cover_position?: string | null;
 };
 
 function SortableItem({ id, children, className }: { id: string, children: (dragHandleProps: any) => React.ReactNode, className?: string }) {
@@ -40,6 +42,7 @@ type Album = {
   subcategory?: string | null;
   cover_url: string;
   created_at: string;
+  cover_position?: string | null;
 };
 
 type Photo = {
@@ -56,7 +59,87 @@ type SiteSetting = {
   title: string;
   section: string;
   url: string;
+  cover_position?: string | null;
 };
+
+function DragPositioner({ 
+  imageUrl, 
+  value = "50% 50%", 
+  onChange,
+  aspectRatio = "aspect-[4/3]"
+}: { 
+  imageUrl: string; 
+  value?: string; 
+  onChange: (val: string) => void;
+  aspectRatio?: string;
+}) {
+  const pos = value.split(' ');
+  let initX = parseFloat(pos[0]);
+  let initY = parseFloat(pos[1]);
+
+  if (isNaN(initX)) initX = 50;
+  if (isNaN(initY)) initY = 50;
+  
+  if (value === "center") { initX = 50; initY = 50; }
+  else if (value === "top") { initX = 50; initY = 0; }
+  else if (value === "bottom") { initX = 50; initY = 100; }
+  else if (value === "left") { initX = 0; initY = 50; }
+  else if (value === "right") { initX = 100; initY = 50; }
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startObjX = initX;
+    const startObjY = initY;
+    const sensitivity = 0.4; // % per pixel
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+
+      let newX = startObjX - deltaX * sensitivity;
+      let newY = startObjY - deltaY * sensitivity;
+
+      newX = Math.max(0, Math.min(100, newX));
+      newY = Math.max(0, Math.min(100, newY));
+
+      onChange(`${Math.round(newX)}% ${Math.round(newY)}%`);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  if (!imageUrl) {
+    return <div className={`w-full ${aspectRatio} bg-[#e8e2dd] flex items-center justify-center text-[10px] text-[#2d2422]/40 uppercase tracking-widest rounded`}>Adicione uma imagem primeiro</div>;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+       <div 
+         className={`relative w-full ${aspectRatio} bg-[#2d2422]/5 rounded overflow-hidden border border-[#2d2422]/10 cursor-grab active:cursor-grabbing group`}
+         onPointerDown={handlePointerDown}
+       >
+          <img 
+            src={imageUrl} 
+            className="w-full h-full object-cover pointer-events-none select-none" 
+            style={{ objectPosition: `${initX}% ${initY}%` }}
+            draggable={false}
+          />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+             <span className="bg-black/60 text-white text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded backdrop-blur-sm">Arraste para ajustar</span>
+          </div>
+       </div>
+       <div className="text-[9px] text-center text-[#2d2422]/50 tracking-widest uppercase">Posição atual: {Math.round(initX)}% {Math.round(initY)}%</div>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -98,6 +181,14 @@ export default function AdminDashboard() {
   const [catFile, setCatFile] = useState<File | null>(null);
   const [catIsHidden, setCatIsHidden] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const [catCoverPosition, setCatCoverPosition] = useState("center");
+  const [editingAlbumPosition, setEditingAlbumPosition] = useState<Album | null>(null);
+  const [editingSettingPosition, setEditingSettingPosition] = useState<SiteSetting | null>(null);
 
   // Upload States for Settings
   const [uploadingSettingKey, setUploadingSettingKey] = useState<string | null>(null);
@@ -230,7 +321,8 @@ export default function AdminDashboard() {
             parent_id: catParentId || null,
             theme: catParentId ? null : catTheme,
             description: catParentId ? null : catDesc,
-            is_hidden: catIsHidden
+            is_hidden: catIsHidden,
+            cover_position: catCoverPosition
         };
 
         if (finalCoverUrl !== undefined) {
@@ -264,6 +356,7 @@ export default function AdminDashboard() {
     setCatTheme(category.theme);
     setCatDesc(category.description || "");
     setCatIsHidden(!!category.is_hidden);
+    setCatCoverPosition(category.cover_position || "center");
     setCatFile(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -276,6 +369,7 @@ export default function AdminDashboard() {
     setCatTheme("dark");
     setCatDesc("");
     setCatIsHidden(false);
+    setCatCoverPosition("center");
     setCatFile(null);
   };
 
@@ -496,6 +590,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUpdateAlbumPosition = async (id: string, position: string) => {
+    try {
+      const { error } = await supabase.from("albums").update({ cover_position: position }).eq("id", id);
+      if (error) throw error;
+      setAlbums(albums.map(a => a.id === id ? { ...a, cover_position: position } : a));
+    } catch (err: any) {
+      alert("Erro ao atualizar posição da capa: " + err.message);
+    }
+  };
+
+  const handleUpdateSettingPosition = async (key: string, position: string) => {
+    try {
+      const { error } = await supabase.from("site_settings").update({ cover_position: position }).eq("key", key);
+      if (error) throw error;
+      setSettings(settings.map(s => s.key === key ? { ...s, cover_position: position } : s));
+    } catch (err: any) {
+      alert("Erro ao atualizar posição: " + err.message);
+    }
+  };
+
   const groupedSettings = settings.reduce((acc, curr) => {
     if (!acc[curr.section]) acc[curr.section] = [];
     acc[curr.section].push(curr);
@@ -668,6 +782,16 @@ export default function AdminDashboard() {
                           Clique para anexar a imagem
                         </div>
                       )}
+                    </div>
+                    <div className="mt-3">
+                      <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Posição da Capa</label>
+                      <p className="text-[9px] text-[#2d2422]/40 mb-2">Clique e arraste a própria imagem para deixá-la no enquadramento perfeito.</p>
+                      <DragPositioner 
+                        imageUrl={catFile ? URL.createObjectURL(catFile) : (categories.find(c => c.id === editingCategoryId)?.cover_url || "")}
+                        value={catCoverPosition}
+                        onChange={setCatCoverPosition}
+                        aspectRatio="aspect-video"
+                      />
                     </div>
                   </div>
 
@@ -865,6 +989,35 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Configurações Dinâmicas da Página Sobre */}
+              <div className="mb-16 pb-12 border-b border-[#2d2422]/10">
+                <div className="max-w-3xl mb-8">
+                  <h2 className="font-serif text-3xl mb-2 text-[#2d2422]">Configurações da Página Sobre</h2>
+                  <p className="text-[#2d2422]/60 text-sm">Escolha o ensaio dos pets que aparecerá na galeria no final da página.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-[#f4ede8]/30 p-6 rounded-xl border border-[#2d2422]/5">
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/80 mb-3">
+                      Galeria dos Pets (Sobre)
+                    </label>
+                    <p className="text-xs text-[#2d2422]/50 mb-4">Escolha o ensaio cujas fotos aparecerão na tira da página sobre.</p>
+                    <div className="flex gap-4 items-center">
+                      <select 
+                        value={settings.find(s => s.key === "sobre_pets_album")?.url || ""}
+                        onChange={(e) => handleSaveTextSetting("sobre_pets_album", e.target.value, "Ensaio Pets da Página Sobre", "Sobre Dinâmica")}
+                        disabled={uploadingSettingKey === "sobre_pets_album"}
+                        className="flex-1 px-4 py-3 bg-white border border-[#2d2422]/10 rounded focus:border-[#cba37b] outline-none text-sm"
+                      >
+                        <option value="">Selecione um ensaio...</option>
+                        {albums.map(a => (
+                          <option key={a.id} value={a.id}>[{a.category.toUpperCase()}] {a.title}</option>
+                        ))}
+                      </select>
+                      {uploadingSettingKey === "sobre_pets_album" && <Loader2 className="w-5 h-5 animate-spin text-[#cba37b]" />}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="max-w-3xl mb-10">
                 <h2 className="font-serif text-3xl mb-2 text-[#2d2422]">Personalização Antiga (Legado)</h2>
                 <p className="text-[#2d2422]/60 text-sm">Estas imagens eram usadas antes do gerenciador de categorias dinâmicas. Você ainda pode alterá-las, mas elas podem não aparecer mais no site novo.</p>
@@ -891,9 +1044,16 @@ export default function AdminDashboard() {
                             </label>
                             
                             <div className="relative aspect-square md:aspect-[4/5] rounded-xl overflow-hidden bg-muted cursor-pointer shadow-sm border border-[#2d2422]/10 group-hover:border-[#cba37b] transition-all">
-                              <img src={setting.url} alt={setting.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                              <img src={setting.url} alt={setting.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" style={{ objectPosition: setting.cover_position || 'center' }} />
                               
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <button 
+                                onClick={(e) => { e.preventDefault(); setEditingSettingPosition(setting); }}
+                                className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white px-2 py-1 rounded backdrop-blur-sm border border-white/10 text-[9px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all z-20"
+                              >
+                                Ajustar Capa
+                              </button>
+
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
                                 {uploadingSettingKey === setting.key ? (
                                   <Loader2 className="w-6 h-6 text-white animate-spin" />
                                 ) : (
@@ -1220,13 +1380,20 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {albums.map((album) => (
                       <motion.div key={album.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group relative aspect-[4/3] rounded-lg overflow-hidden bg-muted shadow-sm border border-black/5">
-                        <img src={album.cover_url} className="w-full h-full object-cover" />
+                        <img src={album.cover_url} className="w-full h-full object-cover" style={{ objectPosition: album.cover_position || 'center' }} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
                           <span className="bg-[#cba37b] text-[#120f0e] text-[9px] uppercase tracking-widest px-2 py-1 rounded font-medium w-max mb-2">
                             {album.category} {album.subcategory ? `- ${album.subcategory}` : ''}
                           </span>
                           <h3 className="text-white font-serif text-2xl">{album.title}</h3>
                           
+                          <button 
+                            onClick={() => setEditingAlbumPosition(album)}
+                            className="absolute top-4 left-4 bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 rounded backdrop-blur-sm border border-white/10 text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all flex items-center shadow-lg"
+                          >
+                            Ajustar Capa
+                          </button>
+
                           <button 
                             onClick={() => handleDeleteAlbum(album)}
                             className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 text-white p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
@@ -1245,6 +1412,107 @@ export default function AdminDashboard() {
         )}
 
       </main>
+
+      {mounted && typeof document !== "undefined" && createPortal(
+        <>
+          <AnimatePresence>
+            {editingSettingPosition && (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+              >
+                <motion.div 
+                  initial={{ scale: 0.95 }} 
+                  animate={{ scale: 1 }} 
+                  exit={{ scale: 0.95 }}
+                  className="bg-[#f4ede8] rounded-xl p-6 md:p-8 max-w-md w-full border border-[#2d2422]/10 shadow-2xl"
+                >
+                  <h3 className="font-serif text-2xl text-[#2d2422] mb-2">Ajustar Capa</h3>
+                  <p className="text-[#2d2422]/60 text-xs mb-6">Clique e arraste a imagem abaixo para ajustar o enquadramento.</p>
+                  
+                  <div className="bg-white p-2 rounded-lg shadow-inner">
+                    <DragPositioner 
+                      imageUrl={editingSettingPosition.url}
+                      value={editingSettingPosition.cover_position || "50% 50%"}
+                      onChange={(val) => setEditingSettingPosition({...editingSettingPosition, cover_position: val})}
+                      aspectRatio="aspect-video"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 mt-8">
+                    <button 
+                      onClick={async () => {
+                        await handleUpdateSettingPosition(editingSettingPosition.key, editingSettingPosition.cover_position || "50% 50%");
+                        setEditingSettingPosition(null);
+                      }}
+                      className="flex-1 bg-[#0f0c0b] text-white py-3.5 rounded text-[10px] uppercase tracking-widest font-medium hover:bg-[#cba37b] hover:text-[#0f0c0b] transition-colors"
+                    >
+                      Salvar Posição
+                    </button>
+                    <button 
+                      onClick={() => setEditingSettingPosition(null)}
+                      className="flex-1 border border-[#2d2422]/20 text-[#2d2422] py-3.5 rounded text-[10px] uppercase tracking-widest font-medium hover:bg-[#2d2422]/5 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {editingAlbumPosition && (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+              >
+                <motion.div 
+                  initial={{ scale: 0.95 }} 
+                  animate={{ scale: 1 }} 
+                  exit={{ scale: 0.95 }}
+                  className="bg-[#f4ede8] rounded-xl p-6 md:p-8 max-w-md w-full border border-[#2d2422]/10 shadow-2xl"
+                >
+                  <h3 className="font-serif text-2xl text-[#2d2422] mb-2">Ajustar Capa</h3>
+                  <p className="text-[#2d2422]/60 text-xs mb-6">Clique e arraste a imagem abaixo para ajustar o enquadramento perfeito. Assim ela aparecerá no site.</p>
+                  
+                  <div className="bg-white p-2 rounded-lg shadow-inner">
+                    <DragPositioner 
+                      imageUrl={editingAlbumPosition.cover_url}
+                      value={editingAlbumPosition.cover_position || "50% 50%"}
+                      onChange={(val) => setEditingAlbumPosition({...editingAlbumPosition, cover_position: val})}
+                      aspectRatio="aspect-[4/3]"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 mt-8">
+                    <button 
+                      onClick={async () => {
+                        await handleUpdateAlbumPosition(editingAlbumPosition.id, editingAlbumPosition.cover_position || "50% 50%");
+                        setEditingAlbumPosition(null);
+                      }}
+                      className="flex-1 bg-[#0f0c0b] text-white py-3.5 rounded text-[10px] uppercase tracking-widest font-medium hover:bg-[#cba37b] hover:text-[#0f0c0b] transition-colors"
+                    >
+                      Salvar Posição
+                    </button>
+                    <button 
+                      onClick={() => setEditingAlbumPosition(null)}
+                      className="flex-1 border border-[#2d2422]/20 text-[#2d2422] py-3.5 rounded text-[10px] uppercase tracking-widest font-medium hover:bg-[#2d2422]/5 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

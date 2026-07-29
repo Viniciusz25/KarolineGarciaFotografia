@@ -12,18 +12,31 @@ const defaultSettings = {
   contato_studio: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=1000&auto=format&fit=crop",
 };
 
+const defaultSettingsPositions: Record<string, string> = {
+  contato_hero_bg: "50% 50%",
+  contato_studio: "50% 50%",
+};
+
 export default function ContatoPage() {
   const [settings, setSettings] = useState(defaultSettings);
+  const [settingsPositions, setSettingsPositions] = useState(defaultSettingsPositions);
 
   useEffect(() => {
     const fetchSettings = async () => {
       const { data } = await supabase.from("site_settings").select("*").eq("section", "Contato");
       if (data && data.length > 0) {
         const newSettings = { ...defaultSettings };
+        const newSettingsPositions = { ...defaultSettingsPositions };
         data.forEach(item => {
-          newSettings[item.key as keyof typeof defaultSettings] = item.url;
+          if (item.key in defaultSettings) {
+            newSettings[item.key as keyof typeof defaultSettings] = item.url;
+            if (item.cover_position) {
+              newSettingsPositions[item.key] = item.cover_position;
+            }
+          }
         });
         setSettings(newSettings);
+        setSettingsPositions(newSettingsPositions);
       }
     };
     fetchSettings();
@@ -42,6 +55,7 @@ export default function ContatoPage() {
               alt="Fotógrafa" 
               fill 
               className="object-cover opacity-80"
+              style={{ objectPosition: settingsPositions.contato_hero_bg || '50% 50%' }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-[#0a0807]" />
           </div>
@@ -107,7 +121,9 @@ export default function ContatoPage() {
                 </div>
                 <div>
                   <h3 className="font-serif text-lg text-[#2d2422] mb-1">WhatsApp</h3>
-                  <p className="text-[#2d2422]/70 text-sm mb-1">(11) 99999-9999</p>
+                  <a href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento." target="_blank" rel="noopener noreferrer" className="text-[#2d2422]/70 text-sm mb-1 hover:text-[#cba37b] transition-colors block">
+                    (11) 94087-8269
+                  </a>
                   <span className="text-[10px] text-[#2d2422]/50 uppercase tracking-wider">Resposta rápida por aqui!</span>
                 </div>
               </div>
@@ -129,7 +145,14 @@ export default function ContatoPage() {
                 </div>
                 <div>
                   <h3 className="font-serif text-lg text-[#2d2422] mb-1">Instagram</h3>
-                  <p className="text-[#2d2422]/70 text-sm mb-1">@karolinegarcia.fotografia</p>
+                  <div className="flex flex-col gap-1 mb-1">
+                    <a href="https://instagram.com/karolinegarcia.fotografia" target="_blank" rel="noopener noreferrer" className="text-[#2d2422]/70 text-sm hover:text-[#cba37b] transition-colors flex items-center gap-2">
+                      @karolinegarcia.fotografia <span className="text-[10px] text-[#2d2422]/40 italic">(perfil social)</span>
+                    </a>
+                    <a href="https://instagram.com/karolinegarcia.fotos" target="_blank" rel="noopener noreferrer" className="text-[#2d2422]/70 text-sm hover:text-[#cba37b] transition-colors flex items-center gap-2">
+                      @karolinegarcia.fotos <span className="text-[10px] text-[#2d2422]/40 italic">(perfil pet)</span>
+                    </a>
+                  </div>
                   <span className="text-[10px] text-[#2d2422]/50 uppercase tracking-wider">Acompanhe meu trabalho!</span>
                 </div>
               </div>
@@ -162,13 +185,13 @@ export default function ContatoPage() {
                 <input type="email" placeholder="E-mail" className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors" />
                 
                 <div className="relative">
-                  <select className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors appearance-none text-white/50">
-                    <option value="" disabled selected>Tipo de Ensaio</option>
-                    <option value="casamento">Casamento</option>
-                    <option value="pet">Pet</option>
-                    <option value="familia">Família</option>
-                    <option value="gestante">Gestante</option>
-                    <option value="outro">Outro</option>
+                  <select defaultValue="" className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors appearance-none text-white/50">
+                    <option value="" disabled className="bg-[#120f0e] text-white">Tipo de Ensaio</option>
+                    <option value="casamento" className="bg-[#120f0e] text-white">Casamento</option>
+                    <option value="pet" className="bg-[#120f0e] text-white">Pet</option>
+                    <option value="familia" className="bg-[#120f0e] text-white">Família</option>
+                    <option value="gestante" className="bg-[#120f0e] text-white">Gestante</option>
+                    <option value="outro" className="bg-[#120f0e] text-white">Outro</option>
                   </select>
                 </div>
 
@@ -186,51 +209,6 @@ export default function ContatoPage() {
                 </button>
               </form>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. MAPA E ESTÚDIO */}
-      <section className="w-full flex flex-col md:flex-row h-[60vh] md:h-[70vh]">
-        {/* Mapa */}
-        <div className="flex-1 relative bg-[#e5e1db] min-h-[300px]">
-          {/* Placeholder para mapa (pode ser substituído por iframe ou imagem estática) */}
-          <div className="absolute inset-0 opacity-40">
-            <Image src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1500&auto=format&fit=crop" alt="Mapa" fill className="object-cover grayscale opacity-50" />
-          </div>
-          
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-            {/* Pin */}
-            <div className="w-16 h-16 bg-[#120f0e] rounded-full flex items-center justify-center text-white font-serif text-2xl mb-4 shadow-xl">
-              KG
-            </div>
-          </div>
-
-          {/* Card Flutuante */}
-          <div className="absolute bottom-8 left-8 right-8 md:bottom-12 md:left-1/2 md:-translate-x-1/2 md:right-auto md:w-80 bg-[#f2eee9] p-8 rounded-lg shadow-2xl">
-            <h3 className="text-2xl font-serif text-[#2d2422] mb-4 flex items-center gap-2">Meu estúdio <Heart size={12} className="text-[#cba37b]"/></h3>
-            <p className="text-[11px] text-[#2d2422]/70 mb-1">Atendimento com hora marcada</p>
-            <p className="text-[11px] text-[#2d2422]/70 mb-6 font-medium">São Paulo - SP</p>
-            <button className="inline-flex items-center text-[9px] uppercase tracking-widest font-medium text-[#2d2422] border border-[#2d2422]/20 px-6 py-2 rounded hover:bg-[#2d2422] hover:text-white transition-colors">
-              VER ROTAS <ArrowRight className="ml-2 w-3 h-3" />
-            </button>
-          </div>
-        </div>
-
-        {/* Foto Estúdio */}
-        <div className="flex-1 relative min-h-[300px]">
-          <Image src={settings.contato_studio} alt="Estúdio Karoline Garcia" fill className="object-cover" />
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-16 text-center">
-             <h3 className="text-2xl md:text-3xl font-serif text-white leading-relaxed font-light mb-4">
-                Um espaço pensado para<br/>
-                receber você e sua história<br/>
-                com todo conforto.
-             </h3>
-             <div className="flex items-center justify-center gap-4">
-                <span className="font-serif italic text-3xl text-[#cba37b]">Karoline Garcia</span>
-                <Heart size={16} className="text-white/50" />
-             </div>
           </div>
         </div>
       </section>

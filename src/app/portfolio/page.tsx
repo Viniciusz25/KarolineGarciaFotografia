@@ -18,6 +18,7 @@ type Category = {
   cover_url: string | null;
   is_hidden?: boolean;
   created_at: string;
+  cover_position?: string | null;
 };
 
 type Album = {
@@ -26,6 +27,7 @@ type Album = {
   subcategory?: string | null;
   cover_url: string;
   created_at: string;
+  cover_position?: string | null;
 };
 
 type GalleryItem = {
@@ -35,6 +37,7 @@ type GalleryItem = {
   title: string | null;
   subcategory?: string | null;
   sortDate: string;
+  cover_position?: string | null;
 };
 
 function DynamicGalleryContent() {
@@ -83,7 +86,8 @@ function DynamicGalleryContent() {
           url: a.cover_url, 
           title: a.title, 
           subcategory: a.subcategory,
-          sortDate: a.created_at
+          sortDate: a.created_at,
+          cover_position: a.cover_position
         }));
       }
 
@@ -144,7 +148,7 @@ function DynamicGalleryContent() {
             >
               <Link href={`/ensaio?id=${item.id}`} className="block relative w-full h-full">
                 <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.4 }} className="w-full h-full">
-                  <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover" loading="lazy" />
+                  <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover" loading="lazy" style={{ objectPosition: item.cover_position || 'center' }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
                     <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
                     <h3 className="text-white font-serif text-2xl">{item.title}</h3>
@@ -171,6 +175,7 @@ function DynamicGalleryContent() {
               src={rootCategory.cover_url} 
               alt={rootCategory.name} 
               className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: rootCategory.cover_position || 'center' }}
             />
             <div className="absolute inset-0 bg-black/50 z-10" />
           </>
@@ -230,7 +235,7 @@ function DynamicGalleryContent() {
                   className="relative aspect-square md:aspect-[4/5] rounded-xl overflow-hidden cursor-pointer group shadow-md"
                 >
                   {folder.cover_url ? (
-                    <img src={folder.cover_url} alt={folder.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                    <img src={folder.cover_url} alt={folder.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" style={{ objectPosition: folder.cover_position || 'center' }} />
                   ) : (
                     <div className="w-full h-full bg-black/5 flex items-center justify-center transition-transform duration-1000 group-hover:scale-105">
                       <ImageIcon className="w-12 h-12 text-[#cba37b]/30" />

@@ -18,6 +18,7 @@ type Category = {
   cover_url: string | null;
   is_hidden?: boolean;
   created_at: string;
+  cover_position?: string | null;
 };
 
 export default function EnsaiosPage() {
@@ -97,7 +98,7 @@ export default function EnsaiosPage() {
                 )}
               >
                 {root.cover_url ? (
-                  <Image src={root.cover_url} alt={root.name} fill className="object-cover" />
+                  <Image src={root.cover_url} alt={root.name} fill className="object-cover" style={{ objectPosition: root.cover_position || 'center' }} />
                 ) : (
                   <div className="w-full h-full bg-black/10 flex items-center justify-center"><ImageIcon className="w-12 h-12 text-[#cba37b]/30" /></div>
                 )}
@@ -175,7 +176,7 @@ export default function EnsaiosPage() {
                         )}
                       >
                         {child.cover_url ? (
-                          <Image src={child.cover_url} alt={child.name} fill className="object-cover transition-transform duration-1000 group-hover:scale-105" />
+                          <Image src={child.cover_url} alt={child.name} fill className="object-cover transition-transform duration-1000 group-hover:scale-105" style={{ objectPosition: child.cover_position || 'center' }} />
                         ) : (
                           <div className="w-full h-full bg-black/5 flex items-center justify-center transition-transform duration-1000 group-hover:scale-105">
                             <ImageIcon className="w-8 h-8 opacity-20" />
@@ -212,7 +213,7 @@ export default function EnsaiosPage() {
               <div className="container mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center gap-12">
                 <div className="flex-1 max-w-sm rounded-xl overflow-hidden relative aspect-video md:aspect-[4/3] shadow-md">
                    {root.cover_url ? (
-                     <Image src={root.cover_url} alt="Detalhe" fill className="object-cover" />
+                     <Image src={root.cover_url} alt="Detalhe" fill className="object-cover" style={{ objectPosition: root.cover_position || 'center' }} />
                    ) : (
                      <div className="w-full h-full bg-black/10"></div>
                    )}

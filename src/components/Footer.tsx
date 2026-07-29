@@ -61,7 +61,7 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
               <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
               </a>
-              <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="https://wa.me/5511940878269" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                 <MessageCircle size={18} />
               </a>
               <a href="mailto:contato@karolinegarcia.com.br" className="text-muted-foreground hover:text-primary transition-colors">
@@ -108,7 +108,7 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
             <ul className="space-y-4 text-xs text-muted-foreground font-light mb-8">
               <li className="flex items-center gap-3">
                 <Phone size={14} className="text-primary" />
-                <span>(11) 99999-9999</span>
+                <span>(11) 94087-8269</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={14} className="text-primary" />

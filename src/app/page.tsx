@@ -65,6 +65,19 @@ const defaultSettings = {
   home_highlight_3: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=800&auto=format&fit=crop",
 };
 
+const defaultSettingsPositions: Record<string, string> = {
+  home_hero_bg: "50% 50%",
+  home_escolha_social: "50% 50%",
+  home_escolha_pet: "50% 50%",
+  home_sobre_mosaic_1: "50% 50%",
+  home_sobre_mosaic_2: "50% 50%",
+  home_sobre_mosaic_3: "50% 50%",
+  home_sobre_mosaic_4: "50% 50%",
+  home_highlight_1: "50% 50%",
+  home_highlight_2: "50% 50%",
+  home_highlight_3: "50% 50%",
+};
+
 export default function Home() {
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
   const router = useRouter();
@@ -73,6 +86,7 @@ export default function Home() {
   const [highlightPhotos, setHighlightPhotos] = useState<Photo[]>([]);
   const [instaPhotos, setInstaPhotos] = useState<Photo[]>([]);
   const [settings, setSettings] = useState(defaultSettings);
+  const [settingsPositions, setSettingsPositions] = useState(defaultSettingsPositions);
   const [masonryPhotos, setMasonryPhotos] = useState<Photo[]>([]);
   const [masonryTitle, setMasonryTitle] = useState<string>("");
   const [masonryLink, setMasonryLink] = useState<string>("");
@@ -100,12 +114,16 @@ export default function Home() {
       const { data } = await supabase.from("site_settings").select("*");
       if (data && data.length > 0) {
         const newSettings = { ...defaultSettings };
+        const newSettingsPositions = { ...defaultSettingsPositions };
         let mAlbum = "";
         let mAlbum2 = "";
         
         data.forEach(item => {
           if (item.key in defaultSettings) {
             newSettings[item.key as keyof typeof defaultSettings] = item.url;
+            if (item.cover_position) {
+              newSettingsPositions[item.key] = item.cover_position;
+            }
           }
           if (item.key === "home_masonry_album") {
             mAlbum = item.url;
@@ -115,6 +133,7 @@ export default function Home() {
           }
         });
         setSettings(newSettings);
+        setSettingsPositions(newSettingsPositions);
 
         if (mAlbum) {
           const { data: aData } = await supabase.from("albums").select("title, category").eq("id", mAlbum).single();
@@ -187,6 +206,7 @@ export default function Home() {
               alt="Fotografia Social"
               fill
               className="object-cover transition-transform duration-[2s] group-hover:scale-105"
+              style={{ objectPosition: settingsPositions.home_escolha_social || '50% 50%' }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent transition-opacity duration-700" />
             
@@ -215,13 +235,10 @@ export default function Home() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
           <div onClick={() => handleExplore("pet")} className="block w-full h-full relative">
-            <Image
-              src={settings.home_escolha_pet}
-              alt="Fotografia Pet"
-              fill
-              className="object-cover transition-transform duration-[2s] group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-l from-black/80 via-black/40 to-transparent transition-opacity duration-700" />
+            <div className="absolute inset-0 z-0">
+              <Image src={settings.home_escolha_pet} alt="Sessão Pet" fill className="object-cover transition-transform duration-[2s] group-hover:scale-110" style={{ objectPosition: settingsPositions.home_escolha_pet || '50% 50%' }} />
+              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors duration-500" />
+            </div>
             
             <div className="absolute top-1/2 -translate-y-1/2 right-8 md:right-24 text-right md:text-left md:left-24 max-w-sm">
               <span className="text-[10px] uppercase tracking-[0.4em] font-medium text-primary mb-2 block">Fotografia</span>
@@ -309,8 +326,11 @@ export default function Home() {
                 Conectar almas <br/>
                 <span className="italic font-light text-primary">e eternizar</span> emoções.
               </h2>
-              <p className="text-muted-foreground font-light text-sm md:text-base max-w-md leading-relaxed pt-4">
-                Seja em um olhar, em um abraço ou em um pequeno gesto, cada detalhe importa e merece ser lembrado para sempre. O meu propósito é transformar esses fragmentos de tempo em histórias visuais autênticas.
+              <p className="text-muted-foreground font-light text-sm md:text-base max-w-lg leading-relaxed pt-4">
+                A fotografia é a arte de pausar o tempo. Nos <strong>ensaios sociais</strong>, ela traduz a sua essência, destacando a sua beleza real e as fases mais marcantes da sua vida com leveza e elegância. Já na <strong>fotografia pet</strong>, ela materializa um amor puro e incondicional, transformando instantes de carinho e diversão na sua maior herança de família.
+              </p>
+              <p className="text-muted-foreground font-light text-sm md:text-base max-w-lg leading-relaxed mt-4">
+                Muito além de cliques roteirizados, meu propósito é criar uma experiência onde você e quem você ama possam simplesmente ser quem são. O resultado? Memórias autênticas que aquecem o peito todas as vezes que você olhar para trás.
               </p>
               <div className="pt-8">
                 <Link href="/sobre" className="inline-flex items-center text-[10px] uppercase tracking-widest text-primary hover:text-foreground transition-colors font-medium border-b border-primary/30 pb-1">
@@ -419,13 +439,21 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Cabelo e Maquiagem: opte por uma produção mais natural que destaque a sua beleza real.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Descanso: uma boa noite de sono na véspera faz toda a diferença na disposição e no olhar.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
                   <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Seja você mesmo! As melhores fotos capturam a sua essência natural de forma autêntica.</span>
                 </li>
               </ul>
             </div>
 
             {/* Card Pet */}
-            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm border border-accent relative overflow-hidden group">
+            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm border border-accent relative overflow-hidden group h-full">
               <div className="absolute top-0 right-0 p-6 opacity-5 text-primary pointer-events-none transition-transform duration-1000 group-hover:scale-125">
                 <Heart size={180} strokeWidth={1} />
               </div>
@@ -443,6 +471,14 @@ export default function Home() {
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
                   <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Gaste um pouco da energia do pet com um passeio rápido antes do ensaio começar.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Limpeza básica: um bom banho no dia anterior garante pelos bonitos, soltinhos e super charmosos nas fotos.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Segurança: se for ao ar livre, garanta que a coleira esteja confortável e com identificação.</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
@@ -495,14 +531,14 @@ export default function Home() {
           <p className="text-background/80 font-light text-sm md:text-base mb-10 max-w-xl mx-auto">
             Será um prazer registrar momentos que farão parte da sua história para sempre. Entre em contato para conversarmos sobre o seu ensaio.
           </p>
-          <Link
-            href="https://wa.me/5511999999999?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-foreground bg-primary px-8 py-4 rounded hover:bg-background hover:text-foreground transition-colors"
+          <a 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-black bg-primary px-8 py-4 rounded hover:bg-white transition-colors" 
+            href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
           >
             <MessageCircle className="mr-3 w-4 h-4" /> Solicitar Orçamento
-          </Link>
+          </a>
         </div>
       </section>
 
