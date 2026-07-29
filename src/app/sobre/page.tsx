@@ -31,7 +31,7 @@ export default function SobrePage() {
   }, []);
 
   return (
-    <div className="w-full bg-[#120f0e] text-[#f4ede8] min-h-screen flex flex-col font-sans">
+    <div className="w-full bg-background text-foreground min-h-screen flex flex-col font-sans">
       
       {/* 1. HERO - SOBRE MIM */}
       <section className="relative w-full min-h-screen flex items-center pt-24 md:pt-0">
@@ -39,16 +39,16 @@ export default function SobrePage() {
           
           <div className="flex-1 flex flex-col justify-center pb-12 md:pb-0">
             <span className="font-serif italic text-3xl text-[#cba37b] mb-4 block opacity-80">Sobre mim</span>
-            <h1 className="text-4xl md:text-6xl font-serif text-[#f4ede8] mb-8 font-light leading-[1.1]">
+            <h1 className="text-4xl md:text-6xl font-serif text-foreground mb-8 font-light leading-[1.1]">
               Fotógrafa de<br/>
               histórias reais e<br/>
               sentimentos verdadeiros.
             </h1>
-            <p className="text-white/60 font-light text-sm max-w-md mb-10 leading-relaxed">
+            <p className="text-muted-foreground font-light text-sm max-w-md mb-10 leading-relaxed">
               Acredito que cada clique tem o poder de eternizar o que realmente importa: o amor, os laços e os momentos que vivemos ao lado de quem amamos.
             </p>
             
-            <Link href="/portfolio" className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white border border-white/20 px-8 py-4 rounded hover:border-[#cba37b] hover:text-[#cba37b] transition-colors self-start">
+            <Link href="/portfolio" className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-foreground border border-foreground/20 px-8 py-4 rounded hover:bg-foreground hover:text-background transition-colors self-start">
               CONHEÇA MEU TRABALHO <ArrowRight className="ml-3 w-4 h-4" />
             </Link>
           </div>
@@ -61,15 +61,15 @@ export default function SobrePage() {
               className="object-cover"
               priority
             />
-            {/* Gradiente para fundir imagem com fundo escuro */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#120f0e] via-transparent to-transparent hidden md:block" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#120f0e] via-transparent to-transparent md:hidden" />
+            {/* Gradiente para fundir imagem com fundo claro */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent hidden md:block" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent md:hidden" />
           </div>
         </div>
       </section>
 
       {/* 2. MINHA HISTÓRIA */}
-      <section className="py-24 md:py-32 bg-[#1a1715] relative overflow-hidden">
+      <section className="py-24 md:py-32 bg-secondary relative overflow-hidden">
         <div className="container mx-auto px-6 md:px-12">
           
           <div className="flex flex-col lg:flex-row items-center gap-12 md:gap-20">
@@ -84,7 +84,7 @@ export default function SobrePage() {
                />
                
                {/* Selo (Stamp) Simulado */}
-               <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-[#cba37b]/30 bg-[#1a1715]/80 backdrop-blur flex items-center justify-center flex-col text-[#cba37b] rotate-[-15deg]">
+               <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-primary/30 bg-secondary/80 backdrop-blur flex items-center justify-center flex-col text-primary rotate-[-15deg]">
                  <span className="font-serif text-2xl tracking-widest">KG</span>
                  <span className="text-[6px] uppercase tracking-[0.2em] mt-1 text-center w-full block">Karoline Garcia<br/>Fotografia</span>
                </div>
@@ -93,17 +93,17 @@ export default function SobrePage() {
             {/* Texto Centro */}
             <div className="w-full lg:w-1/3 text-center lg:text-left flex flex-col justify-center">
                <div className="flex items-center justify-center lg:justify-start gap-4 mb-6">
-                 <span className="text-[10px] uppercase tracking-[0.3em] text-[#cba37b]">MINHA HISTÓRIA</span>
-                 <Heart size={10} className="text-[#cba37b]" />
+                 <span className="text-[10px] uppercase tracking-[0.3em] text-primary">MINHA HISTÓRIA</span>
+                 <Heart size={10} className="text-primary" />
                </div>
-               <h2 className="text-3xl md:text-5xl font-serif text-[#f4ede8] mb-8 font-light">
+               <h2 className="text-3xl md:text-5xl font-serif text-foreground mb-8 font-light">
                  Mais do que fotos,<br/>
-                 eu crio <span className="italic text-[#cba37b]">memórias</span>.
+                 eu crio <span className="italic text-primary">memórias</span>.
                </h2>
-               <p className="text-white/60 font-light text-sm mb-6 leading-relaxed">
+               <p className="text-muted-foreground font-light text-sm mb-6 leading-relaxed">
                  A fotografia entrou na minha vida como paixão e se transformou em propósito. Desde então, me dedico a contar histórias através de imagens que tocam, conectam e permanecem.
                </p>
-               <p className="text-white/60 font-light text-sm leading-relaxed">
+               <p className="text-muted-foreground font-light text-sm leading-relaxed">
                  Cada ensaio é feito com um olhar sensível, buscando a essência de cada pessoa, família ou pet, para que as lembranças sejam autênticas e eternas.
                </p>
             </div>
@@ -123,7 +123,7 @@ export default function SobrePage() {
       </section>
 
       {/* 3. MEUS VALORES (Claro) */}
-      <section className="bg-[#f2eee9] text-[#2d2422] py-20 relative overflow-hidden">
+      <section className="bg-background text-foreground py-20 relative overflow-hidden">
         {/* Textura de fundo bem suave */}
         <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-multiply">
            <Image src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" alt="texture" fill className="object-cover" />
@@ -175,30 +175,30 @@ export default function SobrePage() {
         </div>
       </section>
 
-      {/* 4. MEU OLHAR (Escuro) */}
-      <section className="py-24 md:py-32 bg-[#120f0e]">
+      {/* 4. MEU OLHAR */}
+      <section className="py-24 md:py-32 bg-secondary border-t border-accent">
          <div className="container mx-auto px-6 md:px-12 flex flex-col lg:flex-row gap-16 md:gap-24">
             
             <div className="w-full lg:w-1/3 flex flex-col justify-center">
                <div className="flex items-center gap-4 mb-6">
-                 <span className="text-[10px] uppercase tracking-[0.3em] text-[#cba37b]">MEU OLHAR</span>
-                 <Heart size={10} className="text-[#cba37b]" />
+                 <span className="text-[10px] uppercase tracking-[0.3em] text-primary">MEU OLHAR</span>
+                 <Heart size={10} className="text-primary" />
                </div>
                
-               <h2 className="text-4xl md:text-5xl font-serif text-[#f4ede8] mb-8 font-light leading-tight">
+               <h2 className="text-4xl md:text-5xl font-serif text-foreground mb-8 font-light leading-tight">
                  Natural, atemporal<br/>e cheio de <span className="italic">verdade</span>.
                </h2>
                
-               <p className="text-white/60 font-light text-sm mb-6 leading-relaxed">
+               <p className="text-muted-foreground font-light text-sm mb-6 leading-relaxed">
                  Meu trabalho é guiado pela luz natural, cores verdadeiras e composições que valorizam o que realmente importa.
                </p>
-               <p className="text-white/60 font-light text-sm mb-12 leading-relaxed">
+               <p className="text-muted-foreground font-light text-sm mb-12 leading-relaxed">
                  Mais do que fotos bonitas, busco entregar imagens que façam você sentir tudo novamente.
                </p>
 
                <div className="flex flex-col gap-2">
-                  <span className="font-serif text-3xl md:text-4xl italic text-[#cba37b]/80">Karoline Garcia</span>
-                  <Heart size={14} className="text-[#cba37b] ml-16" />
+                  <span className="font-serif text-3xl md:text-4xl italic text-primary/80">Karoline Garcia</span>
+                  <Heart size={14} className="text-primary ml-16" />
                </div>
             </div>
 
@@ -241,8 +241,8 @@ export default function SobrePage() {
          </div>
       </section>
 
-      {/* 5. TESTEMUNHO (Claro) */}
-      <section className="bg-[#f0ece9] text-[#2d2422] py-24">
+      {/* 5. TESTEMUNHO */}
+      <section className="bg-background text-foreground py-24 border-t border-accent">
          <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16 max-w-4xl">
             
             <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-[#cba37b] shrink-0 shadow-sm">

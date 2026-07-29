@@ -24,17 +24,31 @@ export default function Navbar() {
     return null;
   }
 
-  // A Home, Ensaios, Portfólio, Contato e Sobre começam com hero escuro no topo, então precisamos de texto claro.
-  const isDarkHero = ["/", "/ensaios", "/portfolio", "/contato", "/sobre"].includes(pathname);
-  const useWhiteText = isDarkHero && !isScrolled;
+  // O usuário solicitou padronizar o header em todas as páginas:
+  // Transparente com texto branco no topo, e fundo branco com texto escuro ao rolar.
+  const useWhiteText = !isScrolled;
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      if (target === document) {
+        setIsScrolled(window.scrollY > 20);
+      } else {
+        setIsScrolled((target as HTMLElement).scrollTop > 20);
+      }
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+
+    // Tenta encontrar o scroller da home (se existir)
+    const scroller = document.getElementById('home-scroller');
+    
+    if (scroller) {
+      scroller.addEventListener("scroll", handleScroll);
+      return () => scroller.removeEventListener("scroll", handleScroll);
+    } else {
+      window.addEventListener("scroll", handleScroll);
+      return () => window.removeEventListener("scroll", handleScroll);
+    }
+  }, [pathname]);
 
   return (
     <>

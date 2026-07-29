@@ -41,14 +41,15 @@ const depoimentos = [
 
 export default function DepoimentosPage() {
   return (
-    <div className="pt-32 pb-24 bg-background min-h-screen">
-      <div className="container mx-auto px-6 md:px-12">
-        
-        <header className="text-center mb-20">
+    <div className="bg-background min-h-screen">
+      
+      {/* Dark Hero Section for Navbar compatibility */}
+      <section className="relative w-full pt-40 pb-20 bg-[#120f0e] flex flex-col items-center justify-center text-center">
+        <div className="container mx-auto px-6 md:px-12 relative z-10">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-serif text-foreground mb-4"
+            className="text-4xl md:text-5xl font-serif text-[#f4ede8] mb-4"
           >
             O Que Dizem Nossos Clientes
           </motion.h1>
@@ -56,11 +57,15 @@ export default function DepoimentosPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-muted-foreground text-lg max-w-2xl mx-auto font-light"
+            className="text-[#f4ede8]/70 text-lg max-w-2xl mx-auto font-light"
           >
-            Muito além de fotografias. Leia os relatos de quem confiou em nosso olhar para eternizar as memórias mais preciosas da sua família e dos seus pets.
+            Nossa maior recompensa é ver o amor e a gratidão através dos olhos de quem confia no nosso trabalho.
           </motion.p>
-        </header>
+        </div>
+      </section>
+
+      {/* Content Section */}
+      <div className="container mx-auto px-6 md:px-12 py-24">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
           {depoimentos.map((dep, index) => (

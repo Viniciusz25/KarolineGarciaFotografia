@@ -14,7 +14,7 @@ type Category = {
   is_hidden?: boolean;
 };
 
-export default function Footer() {
+export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -28,6 +28,11 @@ export default function Footer() {
   }, []);
 
   if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
+  // Oculta o Footer global se estivermos na Home (ele será renderizado manualmente lá para funcionar com o scroll snap)
+  if (pathname === "/" && !inHome) {
     return null;
   }
 

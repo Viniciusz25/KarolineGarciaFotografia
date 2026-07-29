@@ -112,7 +112,7 @@ function DynamicGalleryContent() {
     );
   }
 
-  const isDark = rootCategory.theme === "dark";
+  const isDark = false; // forced light theme by user request
 
   const renderSection = (subcatSlug: string, sectionTitle: string) => {
     const filteredItems = items.filter(item => item.subcategory === subcatSlug);
@@ -160,18 +160,29 @@ function DynamicGalleryContent() {
 
   return (
     <div className={clsx(
-      "pt-32 pb-24 min-h-screen transition-colors duration-500",
+      "min-h-screen transition-colors duration-500",
       isDark ? "bg-[#0f0c0b]" : "bg-[#f4ede8]"
     )}>
-      <div className="w-full max-w-7xl mx-auto px-6 md:px-12">
-        <header className="text-center mb-16 px-4">
+      {/* 1. HERO SECTION PARA A CATEGORIA */}
+      <section className="relative w-full h-[50vh] md:h-[60vh] flex flex-col items-center justify-center overflow-hidden">
+        {rootCategory.cover_url ? (
+          <>
+            <img 
+              src={rootCategory.cover_url} 
+              alt={rootCategory.name} 
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/50 z-10" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-[#120f0e] z-10" />
+        )}
+        
+        <div className="relative z-20 text-center px-4 mt-16">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={clsx(
-              "text-4xl md:text-5xl font-serif mb-4",
-              isDark ? "text-[#f4ede8]" : "text-[#2d2422]"
-            )}
+            className="text-4xl md:text-5xl lg:text-6xl font-serif text-[#f4ede8] mb-4"
           >
             {rootCategory.name}
           </motion.h1>
@@ -179,13 +190,16 @@ function DynamicGalleryContent() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className={clsx(
-              "text-lg max-w-2xl mx-auto mb-8 font-light",
-              isDark ? "text-[#f4ede8]/70" : "text-[#2d2422]/70"
-            )}
+            className="text-[#f4ede8]/80 text-lg max-w-2xl mx-auto font-light"
           >
             {rootCategory.description}
           </motion.p>
+        </div>
+      </section>
+
+      {/* 2. CONTEÚDO (GALLERY / FOLDERS) */}
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-16">
+        <header className="flex flex-col items-center text-center mb-16">
           
           {selectedFolder ? (
             <button onClick={() => setSelectedFolder(null)} className="inline-flex items-center text-sm uppercase tracking-widest font-medium text-[#cba37b] hover:text-[#cba37b]/70 transition-colors">

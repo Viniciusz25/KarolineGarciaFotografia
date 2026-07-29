@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import Lenis from 'lenis';
 
 interface SmoothScrollProps {
@@ -8,7 +9,14 @@ interface SmoothScrollProps {
 }
 
 export default function SmoothScroll({ children }: SmoothScrollProps) {
+  const pathname = usePathname();
+
   useEffect(() => {
+    // Desativa o Lenis na Home (/) para permitir o CSS Scroll Snap
+    if (pathname === '/') {
+      return;
+    }
+
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Easing cinematográfico
@@ -27,7 +35,7 @@ export default function SmoothScroll({ children }: SmoothScrollProps) {
     return () => {
       lenis.destroy();
     };
-  }, []);
+  }, [pathname]);
 
   return <>{children}</>;
 }

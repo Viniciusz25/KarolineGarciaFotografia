@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ChevronDown, Camera, Heart, CheckCircle, Edit3, Download, Star, ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import clsx from "clsx";
+import Footer from "@/components/Footer";
 
 type Photo = {
   id: string;
@@ -68,9 +69,17 @@ export default function Home() {
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
   const router = useRouter();
 
+
   const [highlightPhotos, setHighlightPhotos] = useState<Photo[]>([]);
   const [instaPhotos, setInstaPhotos] = useState<Photo[]>([]);
   const [settings, setSettings] = useState(defaultSettings);
+  const [masonryPhotos, setMasonryPhotos] = useState<Photo[]>([]);
+  const [masonryTitle, setMasonryTitle] = useState<string>("");
+  const [masonryLink, setMasonryLink] = useState<string>("");
+
+  const [masonryPhotos2, setMasonryPhotos2] = useState<Photo[]>([]);
+  const [masonryTitle2, setMasonryTitle2] = useState<string>("");
+  const [masonryLink2, setMasonryLink2] = useState<string>("");
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -88,13 +97,58 @@ export default function Home() {
     };
 
     const fetchSettings = async () => {
-      const { data } = await supabase.from("site_settings").select("*").eq("section", "Home");
+      const { data } = await supabase.from("site_settings").select("*");
       if (data && data.length > 0) {
         const newSettings = { ...defaultSettings };
+        let mAlbum = "";
+        let mAlbum2 = "";
+        
         data.forEach(item => {
-          newSettings[item.key as keyof typeof defaultSettings] = item.url;
+          if (item.key in defaultSettings) {
+            newSettings[item.key as keyof typeof defaultSettings] = item.url;
+          }
+          if (item.key === "home_masonry_album") {
+            mAlbum = item.url;
+          }
+          if (item.key === "home_masonry_album_2") {
+            mAlbum2 = item.url;
+          }
         });
         setSettings(newSettings);
+
+        if (mAlbum) {
+          const { data: aData } = await supabase.from("albums").select("title, category").eq("id", mAlbum).single();
+          if (aData) {
+            setMasonryTitle(aData.title);
+            setMasonryLink(`/portfolio?categoria=${aData.category}`);
+          }
+
+          const { data: mData } = await supabase
+            .from("photos")
+            .select("id, url, category")
+            .eq("album_id", mAlbum)
+            .order("created_at", { ascending: false })
+            .limit(6);
+          
+          if (mData) setMasonryPhotos(mData);
+        }
+
+        if (mAlbum2) {
+          const { data: aData2 } = await supabase.from("albums").select("title, category").eq("id", mAlbum2).single();
+          if (aData2) {
+            setMasonryTitle2(aData2.title);
+            setMasonryLink2(`/portfolio?categoria=${aData2.category}`);
+          }
+
+          const { data: mData2 } = await supabase
+            .from("photos")
+            .select("id, url, category")
+            .eq("album_id", mAlbum2)
+            .order("created_at", { ascending: false })
+            .limit(6);
+          
+          if (mData2) setMasonryPhotos2(mData2);
+        }
       }
     };
 
@@ -107,21 +161,14 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col w-full bg-background overflow-hidden text-foreground">
+    <div id="home-scroller" className="h-screen w-full bg-background overflow-y-scroll overflow-x-hidden text-foreground snap-y snap-mandatory scroll-smooth">
       
       {/* 1. Hero Split-Screen */}
-      <section className="relative h-screen w-full flex flex-col md:flex-row overflow-hidden">
+      <section className="relative h-screen w-full flex flex-col md:flex-row overflow-hidden snap-start">
         {/* Navbar overlay gradient to ensure visibility at top */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent z-10 pointer-events-none" />
 
-        {/* Center Logo */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none hidden md:flex flex-col items-center justify-center">
-          <div className="w-32 h-32 rounded-full border border-primary/50 backdrop-blur-md bg-black/20 flex flex-col items-center justify-center shadow-2xl">
-            <span className="font-serif text-4xl text-primary mb-1">KG</span>
-            <span className="text-[6px] uppercase tracking-[0.3em] text-white">Karoline Garcia</span>
-            <span className="text-[5px] uppercase tracking-[0.2em] text-white/50">Fotografia</span>
-          </div>
-        </div>
+
 
         {/* Esquerda: SOCIAL */}
         <motion.div 
@@ -189,12 +236,13 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Scroll Indicator */}
+
+        {/* Indicador Central de Rolagem */}
         <motion.div 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center z-20 pointer-events-none"
         >
           <div className="w-5 h-8 border border-white/30 rounded-full flex justify-center p-1 mb-3">
             <motion.div
@@ -207,8 +255,52 @@ export default function Home() {
         </motion.div>
       </section>
 
+      {/* 1.5 Galeria Mosaico Dinâmica Unificada */}
+      {(masonryPhotos.length > 0 || masonryPhotos2.length > 0) && (
+        <section className="min-h-screen bg-background flex flex-col justify-center snap-start w-full border-t border-accent pt-16 md:pt-24 pb-12">
+          <div className="w-full flex flex-col justify-center">
+            
+            <div className="text-center mb-10 px-6">
+              <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Conheça nosso trabalho</span>
+            </div>
+            
+            {masonryPhotos2.length > 0 && (
+              <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
+                {masonryPhotos2.map((photo) => (
+                  <div key={photo.id} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[35vh] lg:h-[40vh]">
+                    <Image
+                      src={photo.url}
+                      alt={photo.category}
+                      fill
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {masonryPhotos.length > 0 && (
+              <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
+                {masonryPhotos.map((photo) => (
+                  <div key={photo.id} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[35vh] lg:h-[40vh]">
+                    <Image
+                      src={photo.url}
+                      alt={photo.category}
+                      fill
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* 2. Sobre: Fotografar é... */}
-      <section className="py-24 md:py-32 bg-secondary">
+      <section className="min-h-screen py-24 md:py-32 bg-secondary flex items-center justify-center snap-start">
         <div className="container mx-auto px-6 md:px-12">
           <div className="flex flex-col md:flex-row items-center gap-16">
             <div className="flex-1 space-y-6">
@@ -256,7 +348,7 @@ export default function Home() {
 
       {/* 3. Portfólio em Destaque */}
       {highlightPhotos.length > 0 && (
-        <section className="py-24 bg-background overflow-hidden border-t border-accent">
+        <section className="min-h-screen py-24 bg-background overflow-hidden border-t border-accent flex flex-col items-center justify-center snap-start w-full">
           <div className="text-center mb-16 px-6">
             <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Portfólio em Destaque</span>
             <h2 className="font-serif text-3xl md:text-5xl mt-3">
@@ -294,58 +386,76 @@ export default function Home() {
         </section>
       )}
 
-      {/* 4. Experiência Completa */}
-      <section className="py-24 bg-secondary">
+      {/* 4. Dicas de Ensaios (Cards) */}
+      <section className="min-h-screen py-24 bg-secondary flex items-center justify-center snap-start w-full">
         <div className="container mx-auto px-6 md:px-12">
-          <div className="text-center md:text-left mb-16">
-            <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Experiência Completa</span>
-            <h2 className="font-serif text-3xl md:text-5xl mt-3">
-              Do primeiro clique <span className="italic font-light text-primary">à entrega.</span>
+          <div className="text-center mb-16">
+            <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Prepare-se para o seu momento</span>
+            <h2 className="font-serif text-3xl md:text-5xl mt-3 text-foreground">
+              Dicas de <span className="italic font-light text-primary">Ensaios.</span>
             </h2>
           </div>
 
-          <div className="flex flex-col lg:flex-row items-center gap-16">
-            <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-primary mb-4 border border-accent">
-                  <Heart size={20} />
-                </div>
-                <h4 className="font-serif text-lg mb-2">Atendimento<br/>Personalizado</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Card Social */}
+            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm border border-accent relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-6 opacity-5 text-primary pointer-events-none transition-transform duration-1000 group-hover:scale-125">
+                <Camera size={180} strokeWidth={1} />
               </div>
-              <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-primary mb-4 border border-accent">
-                  <Camera size={20} />
-                </div>
-                <h4 className="font-serif text-lg mb-2">Planejamento<br/>do Ensaio</h4>
-              </div>
-              <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-primary mb-4 border border-accent">
-                  <CheckCircle size={20} />
-                </div>
-                <h4 className="font-serif text-lg mb-2">Ensaio com<br/>Direção</h4>
-              </div>
-              <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-primary mb-4 border border-accent">
-                  <Edit3 size={20} />
-                </div>
-                <h4 className="font-serif text-lg mb-2">Pós-produção<br/>Cuidadosa</h4>
-              </div>
+              <h3 className="font-serif text-2xl md:text-3xl mb-8 text-foreground flex items-center relative z-10">
+                <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-4 shrink-0">
+                  <span className="text-sm font-bold">1</span>
+                </span>
+                Ensaio Social
+              </h3>
+              <ul className="space-y-6 relative z-10">
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Escolha roupas confortáveis e em tons neutros. Evite estampas muito chamativas que roubem a atenção.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">O melhor horário para fotos externas é na "golden hour" (início da manhã ou fim da tarde).</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Seja você mesmo! As melhores fotos capturam a sua essência natural de forma autêntica.</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="lg:w-1/3 relative aspect-video md:aspect-[4/3] w-full rounded-2xl overflow-hidden shadow-2xl">
-              <Image
-                src={settings.home_highlight_1}
-                alt="Experiência fotográfica"
-                fill
-                className="object-cover"
-              />
+            {/* Card Pet */}
+            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm border border-accent relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-6 opacity-5 text-primary pointer-events-none transition-transform duration-1000 group-hover:scale-125">
+                <Heart size={180} strokeWidth={1} />
+              </div>
+              <h3 className="font-serif text-2xl md:text-3xl mb-8 text-foreground flex items-center relative z-10">
+                <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-4 shrink-0">
+                  <span className="text-sm font-bold">2</span>
+                </span>
+                Ensaio Pet
+              </h3>
+              <ul className="space-y-6 relative z-10">
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Leve os petiscos e os brinquedos favoritos dele para prender a atenção durante as fotos.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Gaste um pouco da energia do pet com um passeio rápido antes do ensaio começar.</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">Paciência é a chave. Nós nos adaptamos ao ritmo e ao tempo deles, sem pressa.</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
       {/* 5. Depoimentos */}
-      <section className="py-24 bg-secondary border-y border-accent">
+      <section className="min-h-screen py-24 bg-secondary border-y border-accent flex flex-col items-center justify-center snap-start w-full">
         <div className="container mx-auto px-6 md:px-12 text-center">
           <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Depoimentos</span>
           <h2 className="font-serif text-3xl md:text-5xl mt-3 mb-16">
@@ -377,27 +487,19 @@ export default function Home() {
       </section>
 
       {/* 6. CTA Vamos contar a sua história */}
-      <section className="relative py-32 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src={settings.home_hero_bg}
-            alt="Fundo CTA"
-            fill
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" />
-        </div>
+      <section className="relative min-h-screen flex items-center justify-center py-32 overflow-hidden snap-start w-full bg-foreground">
+        <div className="absolute inset-0 z-0 bg-foreground" />
         
         <div className="relative z-10 container mx-auto px-6 text-center max-w-3xl">
-          <h2 className="font-serif text-4xl md:text-6xl text-white mb-6">Vamos contar a sua história?</h2>
-          <p className="text-white/80 font-light text-sm md:text-base mb-10 max-w-xl mx-auto">
+          <h2 className="font-serif text-4xl md:text-6xl text-background mb-6">Vamos contar a sua história?</h2>
+          <p className="text-background/80 font-light text-sm md:text-base mb-10 max-w-xl mx-auto">
             Será um prazer registrar momentos que farão parte da sua história para sempre. Entre em contato para conversarmos sobre o seu ensaio.
           </p>
           <Link
             href="https://wa.me/5511999999999?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-black bg-primary px-8 py-4 rounded hover:bg-white transition-colors"
+            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-foreground bg-primary px-8 py-4 rounded hover:bg-background hover:text-foreground transition-colors"
           >
             <MessageCircle className="mr-3 w-4 h-4" /> Solicitar Orçamento
           </Link>
@@ -406,7 +508,7 @@ export default function Home() {
 
       {/* 7. Instagram Feed */}
       {instaPhotos.length > 0 && (
-        <section className="py-16 bg-background">
+        <section className="min-h-screen py-16 bg-background flex flex-col items-center justify-center snap-start w-full">
           <div className="text-center mb-10">
             <h3 className="text-[10px] uppercase tracking-[0.4em] font-medium text-foreground mb-2">Acompanhe no Instagram</h3>
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-sm font-serif italic text-primary hover:text-foreground transition-colors">@karolinegarcia.fotografia</a>
@@ -431,6 +533,10 @@ export default function Home() {
         </section>
       )}
 
+      {/* Footer Renderizado Manualmente para compatibilidade com Scroll Snap */}
+      <div className="snap-end w-full">
+        <Footer inHome={true} />
+      </div>
     </div>
   );
 }

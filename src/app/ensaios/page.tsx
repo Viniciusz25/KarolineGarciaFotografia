@@ -48,8 +48,29 @@ export default function EnsaiosPage() {
   return (
     <div className="w-full flex flex-col">
       
+      {/* Dark Hero Section for Navbar compatibility */}
+      <section className="relative w-full pt-40 pb-20 bg-[#0f0c0b] text-[#f4ede8] flex flex-col items-center justify-center text-center">
+        <div className="container mx-auto px-6 md:px-12 relative z-10">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-5xl font-serif mb-4"
+          >
+            Nossos Ensaios
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-white/70 text-lg max-w-2xl mx-auto font-light"
+          >
+            Conheça as nossas especialidades e escolha o estilo que mais combina com a sua história.
+          </motion.p>
+        </div>
+      </section>
+
       {rootCategories.map((root, index) => {
-        const isDark = root.theme === "dark";
+        const isDark = false; // forced light theme by user request
         const children = categories.filter(c => c.parent_id === root.id && !c.is_hidden);
 
         return (

@@ -157,13 +157,11 @@ export default function AdminDashboard() {
   // UPLOAD DE SETTING (PERSONALIZAÇÃO)
   // -----------------------------------------------------
   const handleUploadSetting = async (key: string, file: File) => {
-    if (!file) return;
-    setUploadingSettingKey(key);
-    
     try {
+      setUploadingSettingKey(key);
       const fileExt = file.name.split('.').pop();
-      const fileName = `setting-${key}-${Date.now()}.${fileExt}`;
-      const filePath = `sistema/${fileName}`;
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `settings/${fileName}`;
 
       const { error: uploadError } = await supabase.storage.from("fotos").upload(filePath, file);
       if (uploadError) throw uploadError;
@@ -173,10 +171,32 @@ export default function AdminDashboard() {
       const { error: dbError } = await supabase.from("site_settings").update({ url: publicUrl }).eq("key", key);
       if (dbError) throw dbError;
 
+      setSettings(settings.map(s => s.key === key ? { ...s, url: publicUrl } : s));
       alert("Imagem atualizada com sucesso!");
-      fetchData();
-    } catch (error: any) {
-      alert("Erro ao atualizar imagem: " + error.message);
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao atualizar imagem.");
+    } finally {
+      setUploadingSettingKey(null);
+    }
+  };
+
+  const handleSaveTextSetting = async (key: string, value: string, title: string, section: string) => {
+    try {
+      setUploadingSettingKey(key);
+      // Verifica se existe
+      const existing = settings.find(s => s.key === key);
+      if (existing) {
+        await supabase.from("site_settings").update({ url: value }).eq("key", key);
+      } else {
+        await supabase.from("site_settings").insert({ key, url: value, title, section });
+      }
+      const { data } = await supabase.from("site_settings").select("*");
+      if (data) setSettings(data);
+      alert("Configuração salva com sucesso!");
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao salvar configuração.");
     } finally {
       setUploadingSettingKey(null);
     }
@@ -792,6 +812,59 @@ export default function AdminDashboard() {
         {activeTab === "settings" && (
           <section className="col-span-1 lg:col-span-3">
             <div className="bg-white p-6 md:p-10 rounded-xl shadow-lg border border-[#2d2422]/10 min-h-[500px]">
+              
+              {/* NOVA SEÇÃO: Configurações Dinâmicas da Home */}
+              <div className="mb-16 pb-12 border-b border-[#2d2422]/10">
+                <div className="max-w-3xl mb-8">
+                  <h2 className="font-serif text-3xl mb-2 text-[#2d2422]">Configurações da Home</h2>
+                  <p className="text-[#2d2422]/60 text-sm">Escolha quais categorias aparecerão em cada seção da página inicial.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-[#f4ede8]/30 p-6 rounded-xl border border-[#2d2422]/5">
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/80 mb-3">
+                      Galeria Mosaico 1 (Home)
+                    </label>
+                    <p className="text-xs text-[#2d2422]/50 mb-4">Escolha o ensaio cujas fotos (máx. 6) aparecerão na primeira galeria mosaico.</p>
+                    <div className="flex gap-4 items-center">
+                      <select 
+                        value={settings.find(s => s.key === "home_masonry_album")?.url || ""}
+                        onChange={(e) => handleSaveTextSetting("home_masonry_album", e.target.value, "Ensaio Mosaico 1 da Home", "Home Dinâmica")}
+                        disabled={uploadingSettingKey === "home_masonry_album"}
+                        className="flex-1 px-4 py-3 bg-white border border-[#2d2422]/10 rounded focus:border-[#cba37b] outline-none text-sm"
+                      >
+                        <option value="">Selecione um ensaio...</option>
+                        {albums.map(a => (
+                          <option key={a.id} value={a.id}>[{a.category.toUpperCase()}] {a.title}</option>
+                        ))}
+                      </select>
+                      {uploadingSettingKey === "home_masonry_album" && <Loader2 className="w-5 h-5 animate-spin text-[#cba37b]" />}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#f4ede8]/30 p-6 rounded-xl border border-[#2d2422]/5">
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/80 mb-3">
+                      Galeria Mosaico 2 (Home)
+                    </label>
+                    <p className="text-xs text-[#2d2422]/50 mb-4">Escolha o ensaio cujas fotos (máx. 6) aparecerão na segunda galeria mosaico.</p>
+                    <div className="flex gap-4 items-center">
+                      <select 
+                        value={settings.find(s => s.key === "home_masonry_album_2")?.url || ""}
+                        onChange={(e) => handleSaveTextSetting("home_masonry_album_2", e.target.value, "Ensaio Mosaico 2 da Home", "Home Dinâmica")}
+                        disabled={uploadingSettingKey === "home_masonry_album_2"}
+                        className="flex-1 px-4 py-3 bg-white border border-[#2d2422]/10 rounded focus:border-[#cba37b] outline-none text-sm"
+                      >
+                        <option value="">Selecione um ensaio...</option>
+                        {albums.map(a => (
+                          <option key={a.id} value={a.id}>[{a.category.toUpperCase()}] {a.title}</option>
+                        ))}
+                      </select>
+                      {uploadingSettingKey === "home_masonry_album_2" && <Loader2 className="w-5 h-5 animate-spin text-[#cba37b]" />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="max-w-3xl mb-10">
                 <h2 className="font-serif text-3xl mb-2 text-[#2d2422]">Personalização Antiga (Legado)</h2>
                 <p className="text-[#2d2422]/60 text-sm">Estas imagens eram usadas antes do gerenciador de categorias dinâmicas. Você ainda pode alterá-las, mas elas podem não aparecer mais no site novo.</p>
