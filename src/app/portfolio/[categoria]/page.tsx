@@ -3,9 +3,22 @@
 import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Loader2, Heart } from "lucide-react";
+import { useSearchParams, useParams } from "next/navigation";
+import { ArrowLeft, Loader2, Heart, ImageIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import clsx from "clsx";
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  description: string | null;
+  theme: "dark" | "light";
+  cover_url: string | null;
+  is_hidden?: boolean;
+  created_at: string;
+};
 
 type Album = {
   id: string;
@@ -24,45 +37,40 @@ type GalleryItem = {
   sortDate: string;
 };
 
-const defaultSettings = {
-  pet_cat_externo: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?q=80&w=800&auto=format&fit=crop",
-  pet_cat_estudio: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=800&auto=format&fit=crop",
-  pet_cat_familia: "https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=800&auto=format&fit=crop",
-  pet_cat_filhotes: "https://images.unsplash.com/photo-1591160690555-5debfba289f0?q=80&w=800&auto=format&fit=crop",
-  pet_cat_datas: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=800&auto=format&fit=crop",
-  pet_cat_aniversarios: "https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?q=80&w=800&auto=format&fit=crop",
-  pet_cat_gatos: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=800&auto=format&fit=crop",
-};
-
-function PetGalleryContent() {
+function DynamicGalleryContent() {
+  const params = useParams();
   const searchParams = useSearchParams();
+  
+  const categoriaSlug = params.categoria as string;
   const tagParam = searchParams.get("tag");
 
   const [selectedFolder, setSelectedFolder] = useState<string | null>(tagParam || null);
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState(defaultSettings);
-
-  const folders = [
-    { id: "externo", title: "Ensaio Externo", image: settings.pet_cat_externo },
-    { id: "estudio", title: "Estúdio", image: settings.pet_cat_estudio },
-    { id: "pet-e-familia", title: "Pets e Família", image: settings.pet_cat_familia },
-    { id: "filhotes", title: "Filhotes", image: settings.pet_cat_filhotes },
-    { id: "datas-especiais", title: "Datas Especiais", image: settings.pet_cat_datas },
-    { id: "aniversarios-pet", title: "Aniversários Pet", image: settings.pet_cat_aniversarios },
-    { id: "gatos", title: "Gatos", image: settings.pet_cat_gatos }
-  ];
+  
+  const [rootCategory, setRootCategory] = useState<Category | null>(null);
+  const [folders, setFolders] = useState<Category[]>([]);
 
   useEffect(() => {
     if (tagParam) setSelectedFolder(tagParam);
   }, [tagParam]);
 
   useEffect(() => {
-    const fetchGalleryAndSettings = async () => {
-      const [{ data: albumsData }, { data: settingsData }] = await Promise.all([
-        supabase.from("albums").select("*").eq("category", "pet"),
-        supabase.from("site_settings").select("*").eq("section", "PortfolioPet")
-      ]);
+    const fetchGallery = async () => {
+      // Fetch Root Category and its subcategories
+      const { data: catData } = await supabase.from("categories").select("*");
+      
+      if (catData) {
+        const root = catData.find(c => c.slug === categoriaSlug && !c.parent_id && !c.is_hidden);
+        if (root) {
+          setRootCategory(root);
+          const children = catData.filter(c => c.parent_id === root.id && !c.is_hidden);
+          setFolders(children);
+        }
+      }
+
+      // Fetch Albums for this category
+      const { data: albumsData } = await supabase.from("albums").select("*").eq("category", categoriaSlug);
       
       const albumItems: GalleryItem[] = [];
       if (albumsData) {
@@ -78,30 +86,43 @@ function PetGalleryContent() {
 
       albumItems.sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
       setItems(albumItems);
-
-      if (settingsData && settingsData.length > 0) {
-        const newSettings = { ...defaultSettings };
-        settingsData.forEach(item => {
-          newSettings[item.key as keyof typeof defaultSettings] = item.url;
-        });
-        setSettings(newSettings);
-      }
-
       setLoading(false);
     };
 
-    fetchGalleryAndSettings();
-  }, []);
+    fetchGallery();
+  }, [categoriaSlug]);
 
-  const renderSection = (subcatValue: string, sectionTitle: string) => {
-    const filteredItems = items.filter(item => item.subcategory === subcatValue);
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-[#cba37b]" />
+      </div>
+    );
+  }
+
+  if (!rootCategory) {
+    return (
+      <div className="text-center py-32">
+        <h2 className="text-2xl font-serif text-[#2d2422]">Categoria não encontrada</h2>
+        <Link href="/ensaios" className="mt-4 inline-block text-sm text-[#cba37b]">Voltar para Ensaios</Link>
+      </div>
+    );
+  }
+
+  const isDark = rootCategory.theme === "dark";
+
+  const renderSection = (subcatSlug: string, sectionTitle: string) => {
+    const filteredItems = items.filter(item => item.subcategory === subcatSlug);
     
     if (filteredItems.length === 0) {
       return (
-        <div className="mb-24 text-center py-20 bg-[#f2eee9] rounded-xl border border-[#2d2422]/10">
+        <div className={clsx(
+          "mb-24 text-center py-20 rounded-xl border",
+          isDark ? "bg-[#151110] border-white/5 text-[#f4ede8]" : "bg-[#f2eee9] border-[#2d2422]/10 text-[#2d2422]"
+        )}>
            <Heart size={24} className="mx-auto text-[#cba37b] mb-4" />
-           <h3 className="font-serif text-xl text-[#2d2422] mb-2">Ainda não há ensaios publicados nesta categoria.</h3>
-           <p className="text-[#2d2422]/60 text-sm">Em breve teremos novas histórias aqui!</p>
+           <h3 className="font-serif text-xl mb-2">Ainda não há ensaios publicados nesta categoria.</h3>
+           <p className="opacity-60 text-sm">Em breve teremos novas histórias aqui!</p>
         </div>
       );
     }
@@ -140,36 +161,41 @@ function PetGalleryContent() {
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-serif text-[#2d2422] mb-4"
+          className={clsx(
+            "text-4xl md:text-5xl font-serif mb-4",
+            isDark ? "text-[#f4ede8]" : "text-[#2d2422]"
+          )}
         >
-          Fotografia Pet
+          {rootCategory.name}
         </motion.h1>
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-[#2d2422]/70 text-lg max-w-2xl mx-auto mb-8 font-light"
+          className={clsx(
+            "text-lg max-w-2xl mx-auto mb-8 font-light",
+            isDark ? "text-[#f4ede8]/70" : "text-[#2d2422]/70"
+          )}
         >
-          Seu melhor amigo registrado de forma atemporal.
+          {rootCategory.description}
         </motion.p>
         
         {selectedFolder ? (
-           <button onClick={() => setSelectedFolder(null)} className="inline-flex items-center text-sm uppercase tracking-widest font-medium text-[#cba37b] hover:text-[#2d2422] transition-colors">
+           <button onClick={() => setSelectedFolder(null)} className="inline-flex items-center text-sm uppercase tracking-widest font-medium text-[#cba37b] hover:text-[#cba37b]/70 transition-colors">
               <ArrowLeft className="mr-2 w-4 h-4" /> Voltar para Categorias
            </button>
         ) : (
-           <Link href="/ensaios" className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/50 hover:text-[#2d2422] transition-colors">
+           <Link href="/ensaios" className={clsx(
+             "inline-flex items-center text-[10px] uppercase tracking-widest font-medium transition-colors",
+             isDark ? "text-[#f4ede8]/50 hover:text-white" : "text-[#2d2422]/50 hover:text-[#2d2422]"
+           )}>
               <ArrowLeft className="mr-2 w-4 h-4" /> Voltar para Ensaios
            </Link>
         )}
       </header>
 
       <AnimatePresence mode="popLayout">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-[#cba37b]" />
-          </div>
-        ) : !selectedFolder ? (
+        {!selectedFolder ? (
           // Visão de Pastas
           <motion.div 
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-24"
@@ -179,12 +205,18 @@ function PetGalleryContent() {
               <motion.div
                 key={folder.id}
                 whileHover={{ scale: 1.02 }}
-                onClick={() => setSelectedFolder(folder.id)}
+                onClick={() => setSelectedFolder(folder.slug)}
                 className="relative aspect-square md:aspect-[4/5] rounded-xl overflow-hidden cursor-pointer group shadow-md"
               >
-                <img src={folder.image} alt={folder.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                {folder.cover_url ? (
+                  <img src={folder.cover_url} alt={folder.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                ) : (
+                  <div className="w-full h-full bg-black/5 flex items-center justify-center transition-transform duration-1000 group-hover:scale-105">
+                    <ImageIcon className="w-12 h-12 text-[#cba37b]/30" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                  <h3 className="text-white font-serif text-2xl mb-1">{folder.title}</h3>
+                  <h3 className="text-white font-serif text-2xl mb-1">{folder.name}</h3>
                   <div className="w-8 h-1 bg-[#cba37b] rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                 </div>
               </motion.div>
@@ -193,7 +225,7 @@ function PetGalleryContent() {
         ) : (
           // Visão de Álbum da Pasta Selecionada
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-            {renderSection(selectedFolder, folders.find(f => f.id === selectedFolder)?.title || "Portfólio")}
+            {renderSection(selectedFolder, folders.find(f => f.slug === selectedFolder)?.name || "Portfólio")}
           </motion.div>
         )}
       </AnimatePresence>
@@ -201,12 +233,30 @@ function PetGalleryContent() {
   );
 }
 
-export default function PetPortfolioPage() {
+export default function DynamicPortfolioPage() {
+  const params = useParams();
+  const categoriaSlug = params.categoria as string;
+  const [isDark, setIsDark] = useState(false);
+
+  // Um pequeno hack para pegar o tema da categoria e alterar o fundo da página inteira
+  useEffect(() => {
+    const fetchTheme = async () => {
+      const { data } = await supabase.from("categories").select("theme").eq("slug", categoriaSlug).single();
+      if (data && data.theme === "dark") {
+        setIsDark(true);
+      }
+    };
+    if (categoriaSlug) fetchTheme();
+  }, [categoriaSlug]);
+
   return (
-    <div className="pt-32 pb-24 bg-[#f4ede8] min-h-screen">
+    <div className={clsx(
+      "pt-32 pb-24 min-h-screen transition-colors duration-500",
+      isDark ? "bg-[#0f0c0b]" : "bg-[#f4ede8]"
+    )}>
       <div className="w-full max-w-7xl mx-auto px-6 md:px-12">
         <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-[#cba37b]" /></div>}>
-           <PetGalleryContent />
+           <DynamicGalleryContent />
         </Suspense>
       </div>
     </div>

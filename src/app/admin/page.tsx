@@ -3,14 +3,40 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { LogOut, Upload, Trash2, Image as ImageIcon, Loader2, FolderPlus, Layers, Heart, Settings, Edit3 } from "lucide-react";
+import { LogOut, Upload, Trash2, Image as ImageIcon, Loader2, FolderPlus, Layers, Heart, Settings, Edit3, Grid, Eye, EyeOff, GripVertical } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  description: string | null;
+  theme: "dark" | "light";
+  cover_url: string | null;
+  is_hidden?: boolean;
+  order_index?: number;
+  created_at: string;
+};
+
+function SortableItem({ id, children, className }: { id: string, children: (dragHandleProps: any) => React.ReactNode, className?: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 10 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} className={className}>
+      {children({ ...attributes, ...listeners })}
+    </div>
+  );
+}
 
 type Album = {
   id: string;
   title: string;
-  category: "social" | "pet";
+  category: string;
   subcategory?: string | null;
   cover_url: string;
   created_at: string;
@@ -19,7 +45,7 @@ type Album = {
 type Photo = {
   id: string;
   url: string;
-  category: "social" | "pet";
+  category: string;
   title: string | null;
   album_id: string | null;
   created_at: string;
@@ -35,18 +61,19 @@ type SiteSetting = {
 export default function AdminDashboard() {
   const router = useRouter();
   
-  const [activeTab, setActiveTab] = useState<"photos" | "albums" | "settings">("photos");
+  const [activeTab, setActiveTab] = useState<"photos" | "albums" | "categories" | "settings">("photos");
   const [loading, setLoading] = useState(true);
 
   // Data States
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<SiteSetting[]>([]);
   
   // Upload States for Photos
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [photoCategory, setPhotoCategory] = useState<"social" | "pet">("social");
+  const [photoCategory, setPhotoCategory] = useState<string>("");
   const [photoTitle, setPhotoTitle] = useState("");
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState<{current: number, total: number} | null>(null);
@@ -57,17 +84,30 @@ export default function AdminDashboard() {
   // Upload States for Albums
   const [uploadingAlbum, setUploadingAlbum] = useState(false);
   const [albumFile, setAlbumFile] = useState<File | null>(null);
-  const [albumCategory, setAlbumCategory] = useState<"social" | "pet">("social");
-  const [albumSubcategory, setAlbumSubcategory] = useState<string>("casamentos");
+  const [albumCategory, setAlbumCategory] = useState<string>("");
+  const [albumSubcategory, setAlbumSubcategory] = useState<string>("");
   const [albumTitle, setAlbumTitle] = useState("");
+
+  // Upload States for Categories
+  const [uploadingCategory, setUploadingCategory] = useState(false);
+  const [catName, setCatName] = useState("");
+  const [catSlug, setCatSlug] = useState("");
+  const [catTheme, setCatTheme] = useState<"dark" | "light">("dark");
+  const [catDesc, setCatDesc] = useState("");
+  const [catParentId, setCatParentId] = useState<string>("");
+  const [catFile, setCatFile] = useState<File | null>(null);
+  const [catIsHidden, setCatIsHidden] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   // Upload States for Settings
   const [uploadingSettingKey, setUploadingSettingKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (albumCategory === "social") setAlbumSubcategory("casamentos");
-    else setAlbumSubcategory("externo");
-  }, [albumCategory]);
+    // Generate slug automatically based on category name only if not editing
+    if (!editingCategoryId) {
+      setCatSlug(catName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''));
+    }
+  }, [catName, editingCategoryId]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -84,16 +124,22 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const { data: pData, error: pError } = await supabase.from("photos").select("*").order("created_at", { ascending: false });
-      if (pError) console.error("Error fetching photos:", pError);
+      const { data: pData } = await supabase.from("photos").select("*").order("created_at", { ascending: false });
       if (pData) setPhotos(pData);
 
-      const { data: aData, error: aError } = await supabase.from("albums").select("*").order("created_at", { ascending: false });
-      if (aError) console.error("Error fetching albums:", aError);
+      const { data: aData } = await supabase.from("albums").select("*").order("created_at", { ascending: false });
       if (aData) setAlbums(aData);
       
-      const { data: sData, error: sError } = await supabase.from("site_settings").select("*");
-      if (sError) console.error("Error fetching settings:", sError);
+      const { data: cData } = await supabase.from("categories").select("*").order("order_index", { ascending: true }).order("created_at", { ascending: true });
+      if (cData) {
+        setCategories(cData);
+        // Default selects if possible
+        const roots = cData.filter(c => !c.parent_id);
+        if (roots.length > 0 && !photoCategory) setPhotoCategory(roots[0].slug);
+        if (roots.length > 0 && !albumCategory) setAlbumCategory(roots[0].slug);
+      }
+
+      const { data: sData } = await supabase.from("site_settings").select("*");
       if (sData) setSettings(sData);
     } catch (err) {
       console.error("Unexpected error in fetchData:", err);
@@ -133,6 +179,150 @@ export default function AdminDashboard() {
       alert("Erro ao atualizar imagem: " + error.message);
     } finally {
       setUploadingSettingKey(null);
+    }
+  };
+
+  // -----------------------------------------------------
+  // GERENCIAMENTO DE CATEGORIAS
+  // -----------------------------------------------------
+  const handleSubmitCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName || !catSlug) return;
+    
+    setUploadingCategory(true);
+    try {
+        let finalCoverUrl = undefined;
+        if (catFile) {
+            const fileExt = catFile.name.split('.').pop();
+            const fileName = `cat-${Date.now()}.${fileExt}`;
+            const filePath = `categorias/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage.from("fotos").upload(filePath, catFile);
+            if (uploadError) throw uploadError;
+            
+            const { data: { publicUrl } } = supabase.storage.from("fotos").getPublicUrl(filePath);
+            finalCoverUrl = publicUrl;
+        }
+
+        const payload = {
+            name: catName,
+            slug: catSlug,
+            parent_id: catParentId || null,
+            theme: catParentId ? null : catTheme,
+            description: catParentId ? null : catDesc,
+            is_hidden: catIsHidden
+        };
+
+        if (finalCoverUrl !== undefined) {
+            (payload as any).cover_url = finalCoverUrl;
+        }
+
+        if (editingCategoryId) {
+            const { error: dbError } = await supabase.from("categories").update(payload).eq("id", editingCategoryId);
+            if (dbError) throw dbError;
+            alert("Categoria atualizada com sucesso!");
+        } else {
+            const { error: dbError } = await supabase.from("categories").insert([payload]);
+            if (dbError) throw dbError;
+            alert("Categoria criada com sucesso!");
+        }
+        
+        cancelEditCategory();
+        fetchData();
+    } catch (err: any) {
+        alert("Erro ao salvar categoria: " + err.message);
+    } finally {
+        setUploadingCategory(false);
+    }
+  };
+
+  const handleEditCategory = (category: Category) => {
+    setEditingCategoryId(category.id);
+    setCatName(category.name);
+    setCatSlug(category.slug);
+    setCatParentId(category.parent_id || "");
+    setCatTheme(category.theme);
+    setCatDesc(category.description || "");
+    setCatIsHidden(!!category.is_hidden);
+    setCatFile(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setCatName("");
+    setCatSlug("");
+    setCatParentId("");
+    setCatTheme("dark");
+    setCatDesc("");
+    setCatIsHidden(false);
+    setCatFile(null);
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!window.confirm("ATENÇÃO: Excluir esta categoria pode quebrar álbuns vinculados a ela se você não excluí-los primeiro. Continuar?")) return;
+    try {
+      await supabase.from("categories").delete().eq("id", id);
+      fetchData();
+    } catch (err: any) {
+      alert("Erro ao excluir: " + err.message);
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEndRoots = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const rootCats = categories.filter(c => !c.parent_id);
+      const oldIndex = rootCats.findIndex((c) => c.id === active.id);
+      const newIndex = rootCats.findIndex((c) => c.id === over.id);
+      const newRoots = arrayMove(rootCats, oldIndex, newIndex);
+      
+      const newCats = [...categories];
+      newRoots.forEach((root, index) => {
+          const idx = newCats.findIndex(c => c.id === root.id);
+          if (idx !== -1) newCats[idx] = { ...root, order_index: index };
+      });
+      setCategories(newCats);
+      
+      for (let i = 0; i < newRoots.length; i++) {
+        await supabase.from("categories").update({ order_index: i }).eq("id", newRoots[i].id);
+      }
+    }
+  };
+
+  const handleDragEndChildren = async (event: DragEndEvent, parentId: string) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const children = categories.filter(c => c.parent_id === parentId);
+      const oldIndex = children.findIndex((c) => c.id === active.id);
+      const newIndex = children.findIndex((c) => c.id === over.id);
+      const newChildrenArray = arrayMove(children, oldIndex, newIndex);
+      
+      const newCats = [...categories];
+      newChildrenArray.forEach((child, index) => {
+          const idx = newCats.findIndex(c => c.id === child.id);
+          if (idx !== -1) newCats[idx] = { ...child, order_index: index };
+      });
+      setCategories(newCats);
+      
+      for (let i = 0; i < newChildrenArray.length; i++) {
+        await supabase.from("categories").update({ order_index: i }).eq("id", newChildrenArray[i].id);
+      }
+    }
+  };
+
+  const handleToggleCategoryVisibility = async (id: string, currentHidden: boolean) => {
+    try {
+      const { error } = await supabase.from("categories").update({ is_hidden: !currentHidden }).eq("id", id);
+      if (error) throw error;
+      fetchData();
+    } catch (err: any) {
+      alert("Erro ao alterar visibilidade: " + err.message);
     }
   };
 
@@ -231,7 +421,7 @@ export default function AdminDashboard() {
   };
 
   // -----------------------------------------------------
-  // EXCLUSÃO
+  // EXCLUSÃO DE FOTO / ÁLBUM
   // -----------------------------------------------------
   const handleDeletePhoto = async (photo: Photo) => {
     if (!window.confirm("Excluir esta foto?")) return;
@@ -292,6 +482,12 @@ export default function AdminDashboard() {
     return acc;
   }, {} as Record<string, SiteSetting[]>);
 
+  const rootCategories = categories.filter(c => !c.parent_id);
+  const childCategories = categories.filter(c => c.parent_id);
+
+  // Derivar as subcategorias pro form de album baseado na categoria selecionada
+  const availableSubcategoriesForAlbum = categories.filter(c => c.parent_id === categories.find(root => root.slug === albumCategory)?.id);
+
   return (
     <div className="min-h-screen bg-[#f4ede8] font-sans flex flex-col pb-24">
       {/* HEADER ESCURO */}
@@ -335,13 +531,22 @@ export default function AdminDashboard() {
             <Layers className="w-4 h-4 mr-2" /> Gerenciar Ensaios (Álbuns)
           </button>
           <button
+            onClick={() => setActiveTab("categories")}
+            className={clsx(
+              "py-4 font-medium transition-colors border-b-2 flex items-center text-[10px] uppercase tracking-widest whitespace-nowrap",
+              activeTab === "categories" ? "border-[#cba37b] text-[#cba37b]" : "border-transparent text-white/40 hover:text-white/80"
+            )}
+          >
+            <Grid className="w-4 h-4 mr-2" /> Categorias
+          </button>
+          <button
             onClick={() => setActiveTab("settings")}
             className={clsx(
               "py-4 font-medium transition-colors border-b-2 flex items-center text-[10px] uppercase tracking-widest whitespace-nowrap",
               activeTab === "settings" ? "border-[#cba37b] text-[#cba37b]" : "border-transparent text-white/40 hover:text-white/80"
             )}
           >
-            <Settings className="w-4 h-4 mr-2" /> Personalização do Site (Cms)
+            <Settings className="w-4 h-4 mr-2" /> Personalização Antiga
           </button>
         </div>
       </div>
@@ -349,14 +554,247 @@ export default function AdminDashboard() {
       <main className="flex-1 p-6 md:p-12 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-3 gap-8 text-[#2d2422]">
         
         {/* ============================================================================================== */}
+        {/* TAB: CATEGORIES */}
+        {/* ============================================================================================== */}
+        {activeTab === "categories" && (
+          <>
+            <section className="lg:col-span-1">
+              <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-[#2d2422]/10 sticky top-40">
+                <h2 className="font-serif text-2xl mb-6 flex items-center text-[#2d2422]">
+                  <Grid className="w-5 h-5 mr-3 text-[#cba37b]" /> {editingCategoryId ? "Editar Categoria" : "Adicionar Categoria"}
+                </h2>
+                
+                <form onSubmit={handleSubmitCategory} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Nome</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={catName}
+                      onChange={(e) => setCatName(e.target.value)}
+                      placeholder="Ex: Corporativo"
+                      className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm placeholder:text-[#2d2422]/30"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Slug (URL)</label>
+                    <input 
+                      type="text" 
+                      value={catSlug}
+                      onChange={(e) => editingCategoryId && setCatSlug(e.target.value)}
+                      readOnly={!editingCategoryId}
+                      className={clsx(
+                        "w-full px-4 py-3 border border-[#2d2422]/10 rounded outline-none text-sm",
+                        editingCategoryId ? "bg-[#f4ede8] focus:bg-white focus:border-[#cba37b]" : "bg-[#e8e2dd] text-[#2d2422]/50"
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Categoria Pai (Deixe vazio para Principal)</label>
+                    <select 
+                      value={catParentId}
+                      onChange={(e) => setCatParentId(e.target.value)}
+                      className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm"
+                    >
+                      <option value="">-- Nenhuma (É uma categoria principal) --</option>
+                      {rootCategories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {catParentId === "" && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Tema da Seção</label>
+                        <select 
+                          value={catTheme}
+                          onChange={(e) => setCatTheme(e.target.value as "dark"|"light")}
+                          className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm"
+                        >
+                          <option value="dark">Escuro (Dark)</option>
+                          <option value="light">Claro (Light)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Descrição (Subtítulo)</label>
+                        <textarea 
+                          value={catDesc}
+                          onChange={(e) => setCatDesc(e.target.value)}
+                          placeholder="Texto curto para a home..."
+                          className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm h-24 resize-none placeholder:text-[#2d2422]/30"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Imagem de Capa {catParentId === "" ? "(Fundo Hero)" : "(Mosaico)"}</label>
+                    <div className="border border-dashed border-[#2d2422]/20 rounded p-6 text-center hover:bg-[#f2eee9] transition-colors cursor-pointer relative bg-[#f4ede8]/50">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        required={false}
+                        onChange={(e) => setCatFile(e.target.files?.[0] || null)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      {catFile ? (
+                        <div className="text-[#cba37b] font-medium text-sm truncate px-2">{catFile.name}</div>
+                      ) : (
+                        <div className="text-[#2d2422]/50 text-sm flex flex-col items-center">
+                          <ImageIcon className="w-6 h-6 mb-2 opacity-50" />
+                          Clique para anexar a imagem
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      id="catIsHidden"
+                      checked={catIsHidden}
+                      onChange={(e) => setCatIsHidden(e.target.checked)}
+                      className="accent-[#cba37b] w-4 h-4 cursor-pointer"
+                    />
+                    <label htmlFor="catIsHidden" className="text-sm text-[#2d2422] cursor-pointer">
+                      Ocultar categoria no site
+                    </label>
+                  </div>
+
+                  <div className="flex gap-4 mt-6">
+                    <button
+                      type="submit"
+                      disabled={uploadingCategory || !catName || !catSlug}
+                      className="flex-1 bg-[#0f0c0b] text-white py-4 rounded font-medium uppercase tracking-widest text-[10px] hover:bg-[#cba37b] hover:text-[#0f0c0b] transition-colors flex items-center justify-center disabled:opacity-50"
+                    >
+                      {uploadingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : (editingCategoryId ? "SALVAR ALTERAÇÕES" : "CRIAR CATEGORIA")}
+                    </button>
+                    {editingCategoryId && (
+                      <button
+                        type="button"
+                        onClick={cancelEditCategory}
+                        className="bg-transparent border border-[#2d2422]/20 text-[#2d2422] py-4 px-6 rounded font-medium uppercase tracking-widest text-[10px] hover:bg-[#2d2422]/5 transition-colors"
+                      >
+                        CANCELAR
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </section>
+
+            <section className="lg:col-span-2 space-y-8">
+              <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-[#2d2422]/10">
+                <h2 className="font-serif text-2xl mb-8 text-[#2d2422]">Estrutura de Categorias</h2>
+                
+                {loading ? (
+                  <div className="flex justify-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#cba37b]" />
+                  </div>
+                ) : rootCategories.length === 0 ? (
+                  <div className="text-center py-20 text-[#2d2422]/40">
+                    Nenhuma categoria encontrada.
+                  </div>
+                ) : (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndRoots}>
+                    <SortableContext items={rootCategories.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                      <div className="space-y-6">
+                        {rootCategories.map((root) => (
+                          <SortableItem key={root.id} id={root.id} className="border border-[#2d2422]/10 rounded-xl overflow-hidden bg-white">
+                            {(dragHandleProps) => (
+                              <>
+                                <div className="bg-[#f4ede8] p-4 flex justify-between items-center relative">
+                                  <div className="flex items-center gap-4">
+                                    <div className="cursor-grab text-[#2d2422]/20 hover:text-[#cba37b]" {...dragHandleProps}>
+                                      <GripVertical className="w-5 h-5"/>
+                                    </div>
+                                    {root.cover_url && <img src={root.cover_url} className="w-12 h-12 object-cover rounded shadow-sm" />}
+                                    <div>
+                                      <h3 className="font-serif text-xl">{root.name}</h3>
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="bg-[#cba37b]/20 text-[#cba37b] text-[9px] uppercase tracking-widest px-2 py-0.5 rounded font-medium">Root</span>
+                                        <span className="bg-black/5 text-black/60 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded font-medium">Tema: {root.theme}</span>
+                                        {root.is_hidden && <span className="bg-red-500/10 text-red-600 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded font-medium">Oculta</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1 relative z-20">
+                                    <button onClick={() => handleToggleCategoryVisibility(root.id, !!root.is_hidden)} className="text-[#2d2422]/40 hover:text-[#cba37b] p-2 transition-colors" title={root.is_hidden ? "Mostrar" : "Ocultar"}>
+                                      {root.is_hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                    <button onClick={() => handleEditCategory(root)} className="text-[#2d2422]/40 hover:text-[#cba37b] p-2 transition-colors" title="Editar">
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => handleDeleteCategory(root.id)} className="text-red-500 hover:text-red-700 p-2"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                                
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEndChildren(e, root.id)}>
+                                  <SortableContext items={childCategories.filter(c => c.parent_id === root.id).map(c => c.id)} strategy={rectSortingStrategy}>
+                                    <div className="p-4 bg-white grid grid-cols-2 md:grid-cols-3 gap-4">
+                                      {childCategories.filter(c => c.parent_id === root.id).map(child => (
+                                        <SortableItem key={child.id} id={child.id} className="relative group rounded border border-[#2d2422]/10 p-3 flex items-center gap-3 bg-white">
+                                          {(childDragHandleProps) => (
+                                            <>
+                                              <div className="cursor-grab text-[#2d2422]/20 hover:text-[#cba37b] shrink-0" {...childDragHandleProps}>
+                                                <GripVertical className="w-4 h-4"/>
+                                              </div>
+                                              {child.cover_url ? (
+                                                <img src={child.cover_url} className="w-10 h-10 object-cover rounded shrink-0" />
+                                              ) : (
+                                                <div className="w-10 h-10 bg-[#f4ede8] flex items-center justify-center rounded shrink-0 text-[#cba37b]/50"><ImageIcon className="w-4 h-4" /></div>
+                                              )}
+                                              <div className="min-w-0 flex-1">
+                                                <p className="font-medium text-sm text-[#2d2422] truncate">{child.name}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                  <p className="text-[9px] text-[#2d2422]/50 truncate">{child.slug}</p>
+                                                  {child.is_hidden && <span className="bg-red-500/10 text-red-600 text-[9px] uppercase tracking-widest px-1.5 rounded font-medium">Oculta</span>}
+                                                </div>
+                                              </div>
+                                              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2 z-20">
+                                                <button onClick={() => handleToggleCategoryVisibility(child.id, !!child.is_hidden)} className="text-[#2d2422]/40 hover:text-[#cba37b] p-1.5 transition-colors">
+                                                  {child.is_hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                                <button onClick={() => handleEditCategory(child)} className="text-[#2d2422]/40 hover:text-[#cba37b] p-1.5 transition-colors" title="Editar">
+                                                  <Edit3 className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => handleDeleteCategory(child.id)} className="text-red-500 hover:text-red-700 p-1.5"><Trash2 className="w-4 h-4" /></button>
+                                              </div>
+                                            </>
+                                          )}
+                                        </SortableItem>
+                                      ))}
+                                      {childCategories.filter(c => c.parent_id === root.id).length === 0 && (
+                                        <p className="col-span-full text-xs text-[#2d2422]/40 italic">Sem subcategorias.</p>
+                                      )}
+                                    </div>
+                                  </SortableContext>
+                                </DndContext>
+                              </>
+                            )}
+                          </SortableItem>
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* ============================================================================================== */}
         {/* TAB: SETTINGS */}
         {/* ============================================================================================== */}
         {activeTab === "settings" && (
           <section className="col-span-1 lg:col-span-3">
             <div className="bg-white p-6 md:p-10 rounded-xl shadow-lg border border-[#2d2422]/10 min-h-[500px]">
               <div className="max-w-3xl mb-10">
-                <h2 className="font-serif text-3xl mb-2 text-[#2d2422]">Personalização do Site</h2>
-                <p className="text-[#2d2422]/60 text-sm">Altere as fotos fixas ilustrativas do seu site. Clique sobre a imagem que deseja trocar para fazer o upload de uma nova. A mudança aparecerá na mesma hora no site.</p>
+                <h2 className="font-serif text-3xl mb-2 text-[#2d2422]">Personalização Antiga (Legado)</h2>
+                <p className="text-[#2d2422]/60 text-sm">Estas imagens eram usadas antes do gerenciador de categorias dinâmicas. Você ainda pode alterá-las, mas elas podem não aparecer mais no site novo.</p>
               </div>
 
               {loading ? (
@@ -473,11 +911,12 @@ export default function AdminDashboard() {
                       <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Categoria (para Fotos Soltas)</label>
                       <select 
                         value={photoCategory}
-                        onChange={(e) => setPhotoCategory(e.target.value as "social" | "pet")}
+                        onChange={(e) => setPhotoCategory(e.target.value)}
                         className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm"
                       >
-                        <option value="social">Social</option>
-                        <option value="pet">Pet</option>
+                        {rootCategories.map(c => (
+                          <option key={c.id} value={c.slug}>{c.name}</option>
+                        ))}
                       </select>
                     </div>
                   )}
@@ -631,48 +1070,30 @@ export default function AdminDashboard() {
                     <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Categoria</label>
                     <select 
                       value={albumCategory}
-                      onChange={(e) => setAlbumCategory(e.target.value as "social" | "pet")}
+                      onChange={(e) => {
+                        setAlbumCategory(e.target.value);
+                        setAlbumSubcategory("");
+                      }}
                       className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm"
                     >
-                      <option value="social">Social</option>
-                      <option value="pet">Pet</option>
+                      {rootCategories.map(c => (
+                        <option key={c.id} value={c.slug}>{c.name}</option>
+                      ))}
                     </select>
                   </div>
 
-                  {albumCategory === "social" && (
+                  {availableSubcategoriesForAlbum.length > 0 && (
                     <div>
-                      <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Subcategoria (Qual pasta?)</label>
+                      <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Subcategoria</label>
                       <select 
                         value={albumSubcategory}
                         onChange={(e) => setAlbumSubcategory(e.target.value)}
                         className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm"
                       >
-                        <option value="casamentos">Casamentos</option>
-                        <option value="debutantes">Debutantes</option>
-                        <option value="gestantes">Gestantes</option>
-                        <option value="familia">Família</option>
-                        <option value="casais">Casais</option>
-                        <option value="formaturas">Formaturas</option>
-                        <option value="eventos">Eventos</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {albumCategory === "pet" && (
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-widest font-medium text-[#2d2422]/60 mb-2">Subcategoria (Qual pasta?)</label>
-                      <select 
-                        value={albumSubcategory}
-                        onChange={(e) => setAlbumSubcategory(e.target.value)}
-                        className="w-full px-4 py-3 bg-[#f4ede8] border border-[#2d2422]/10 rounded focus:bg-white focus:border-[#cba37b] outline-none text-sm"
-                      >
-                        <option value="externo">Ensaio Externo</option>
-                        <option value="estudio">Estúdio</option>
-                        <option value="pet-e-familia">Pets e Família</option>
-                        <option value="filhotes">Filhotes</option>
-                        <option value="datas-especiais">Datas Especiais</option>
-                        <option value="aniversarios-pet">Aniversários Pet</option>
-                        <option value="gatos">Gatos</option>
+                        <option value="">Selecione...</option>
+                        {availableSubcategoriesForAlbum.map(sub => (
+                          <option key={sub.id} value={sub.slug}>{sub.name}</option>
+                        ))}
                       </select>
                     </div>
                   )}

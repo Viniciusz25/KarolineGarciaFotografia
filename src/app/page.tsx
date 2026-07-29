@@ -102,8 +102,8 @@ export default function Home() {
     fetchSettings();
   }, []);
 
-  const handleExplore = (type: "social" | "pet") => {
-    router.push(`/portfolio/${type}`);
+  const handleExplore = (type: string) => {
+    router.push(`/portfolio?categoria=${type}`);
   };
 
   return (

@@ -1,16 +1,37 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Mail, MapPin, Phone } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  is_hidden?: boolean;
+};
 
 export default function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const fetchCats = async () => {
+      const { data } = await supabase.from("categories").select("id, name, slug, parent_id, is_hidden").order("order_index", { ascending: true }).order("created_at", { ascending: true });
+      if (data) setCategories(data);
+    };
+    fetchCats();
+  }, []);
 
   if (pathname?.startsWith("/admin")) {
     return null;
   }
+
+  const rootCategories = categories.filter(c => !c.parent_id && !c.is_hidden).slice(0, 2); // Pega até as 2 primeiras pra não quebrar o layout do footer
 
   return (
     <footer className="bg-background text-foreground pt-20 pb-8 border-t border-accent">
@@ -49,39 +70,32 @@ export default function Footer() {
             <h4 className="text-[10px] uppercase tracking-[0.2em] font-medium text-primary mb-6">Navegação</h4>
             <ul className="space-y-3 text-xs text-muted-foreground font-light">
               <li><Link href="/" className="hover:text-foreground transition-colors">Início</Link></li>
-              <li><Link href="/portfolio" className="hover:text-foreground transition-colors">Portfólio</Link></li>
-              <li><Link href="/portfolio/social" className="hover:text-foreground transition-colors">Fotografia Social</Link></li>
-              <li><Link href="/portfolio/pet" className="hover:text-foreground transition-colors">Fotografia Pet</Link></li>
+              <li><Link href="/ensaios" className="hover:text-foreground transition-colors">Ensaios</Link></li>
+              {rootCategories.map(root => (
+                <li key={root.id}><Link href={`/portfolio?categoria=${root.slug}`} className="hover:text-foreground transition-colors">{root.name}</Link></li>
+              ))}
               <li><Link href="/sobre" className="hover:text-foreground transition-colors">Sobre</Link></li>
               <li><Link href="/depoimentos" className="hover:text-foreground transition-colors">Depoimentos</Link></li>
               <li><Link href="/contato" className="hover:text-foreground transition-colors">Contato</Link></li>
             </ul>
           </div>
 
-          {/* Ensaios Sociais */}
-          <div className="flex flex-col">
-            <h4 className="text-[10px] uppercase tracking-[0.2em] font-medium text-primary mb-6">Ensaios Sociais</h4>
-            <ul className="space-y-3 text-xs text-muted-foreground font-light">
-              <li><Link href="/portfolio/social?tag=casamentos" className="hover:text-foreground transition-colors">Casamentos</Link></li>
-              <li><Link href="/portfolio/social?tag=debutantes" className="hover:text-foreground transition-colors">Debutantes</Link></li>
-              <li><Link href="/portfolio/social?tag=gestantes" className="hover:text-foreground transition-colors">Gestantes</Link></li>
-              <li><Link href="/portfolio/social?tag=familia" className="hover:text-foreground transition-colors">Família</Link></li>
-              <li><Link href="/portfolio/social?tag=casais" className="hover:text-foreground transition-colors">Casais</Link></li>
-              <li><Link href="/portfolio/social?tag=formaturas" className="hover:text-foreground transition-colors">Formaturas</Link></li>
-            </ul>
-          </div>
-
-          {/* Ensaios Pet */}
-          <div className="flex flex-col">
-            <h4 className="text-[10px] uppercase tracking-[0.2em] font-medium text-primary mb-6">Ensaios Pet</h4>
-            <ul className="space-y-3 text-xs text-muted-foreground font-light">
-              <li><Link href="/portfolio/pet?tag=externo" className="hover:text-foreground transition-colors">Ensaio Externo</Link></li>
-              <li><Link href="/portfolio/pet?tag=estudio" className="hover:text-foreground transition-colors">Estúdio</Link></li>
-              <li><Link href="/portfolio/pet?tag=pet-e-familia" className="hover:text-foreground transition-colors">Pets e Família</Link></li>
-              <li><Link href="/portfolio/pet?tag=filhotes" className="hover:text-foreground transition-colors">Filhotes</Link></li>
-              <li><Link href="/portfolio/pet?tag=datas-especiais" className="hover:text-foreground transition-colors">Datas Especiais</Link></li>
-            </ul>
-          </div>
+          {/* Categorias Dinâmicas */}
+          {rootCategories.map(root => {
+            const children = categories.filter(c => c.parent_id === root.id && !c.is_hidden);
+            return (
+              <div key={root.id} className="flex flex-col">
+                <h4 className="text-[10px] uppercase tracking-[0.2em] font-medium text-primary mb-6">{root.name}</h4>
+                <ul className="space-y-3 text-xs text-muted-foreground font-light">
+                  {children.length > 0 ? children.map(child => (
+                    <li key={child.id}><Link href={`/portfolio?categoria=${root.slug}&tag=${child.slug}`} className="hover:text-foreground transition-colors">{child.name}</Link></li>
+                  )) : (
+                    <li><Link href={`/portfolio?categoria=${root.slug}`} className="hover:text-foreground transition-colors">Ver Portfólio</Link></li>
+                  )}
+                </ul>
+              </div>
+            );
+          })}
 
           {/* Fale Comigo */}
           <div className="flex flex-col">

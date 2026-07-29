@@ -1,272 +1,250 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useState, useEffect, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Heart, User, PawPrint, ArrowRight, Camera, Clock, ShieldCheck } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft, Loader2, Heart, ImageIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import clsx from "clsx";
 
-const defaultSettings = {
-  portfolio_hero_social: "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2000&auto=format&fit=crop",
-  portfolio_hero_pet: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=2000&auto=format&fit=crop",
-  portfolio_mosaic_1: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_2: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_3: "https://images.unsplash.com/photo-1519064438069-5c742354c0e6?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_4: "https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_5: "https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_6: "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_7: "https://images.unsplash.com/photo-1505628346881-b72b27e84530?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_8: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1000&auto=format&fit=crop",
-  portfolio_mosaic_9: "https://images.unsplash.com/photo-1591160690555-5debfba289f0?q=80&w=1000&auto=format&fit=crop",
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  description: string | null;
+  theme: "dark" | "light";
+  cover_url: string | null;
+  is_hidden?: boolean;
+  created_at: string;
 };
 
-export default function PortfolioPage() {
-  const [settings, setSettings] = useState(defaultSettings);
+type Album = {
+  id: string;
+  title: string;
+  subcategory?: string | null;
+  cover_url: string;
+  created_at: string;
+};
+
+type GalleryItem = {
+  id: string;
+  type: "album";
+  url: string;
+  title: string | null;
+  subcategory?: string | null;
+  sortDate: string;
+};
+
+function DynamicGalleryContent() {
+  const searchParams = useSearchParams();
+  
+  const categoriaSlug = searchParams.get("categoria");
+  const tagParam = searchParams.get("tag");
+
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(tagParam || null);
+  const [items, setItems] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [rootCategory, setRootCategory] = useState<Category | null>(null);
+  const [folders, setFolders] = useState<Category[]>([]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      const { data } = await supabase.from("site_settings").select("*").eq("section", "Portfolio");
-      if (data && data.length > 0) {
-        const newSettings = { ...defaultSettings };
-        data.forEach(item => {
-          newSettings[item.key as keyof typeof defaultSettings] = item.url;
-        });
-        setSettings(newSettings);
+    if (tagParam) setSelectedFolder(tagParam);
+  }, [tagParam]);
+
+  useEffect(() => {
+    const fetchGallery = async () => {
+      if (!categoriaSlug) {
+        setLoading(false);
+        return;
       }
+      // Fetch Root Category and its subcategories
+      const { data: catData } = await supabase.from("categories").select("*");
+      
+      if (catData) {
+        const root = catData.find(c => c.slug === categoriaSlug && !c.parent_id && !c.is_hidden);
+        if (root) {
+          setRootCategory(root);
+          const children = catData.filter(c => c.parent_id === root.id && !c.is_hidden);
+          setFolders(children);
+        }
+      }
+
+      // Fetch Albums for this category
+      const { data: albumsData } = await supabase.from("albums").select("*").eq("category", categoriaSlug);
+      
+      const albumItems: GalleryItem[] = [];
+      if (albumsData) {
+        albumsData.forEach((a: Album) => albumItems.push({
+          id: a.id, 
+          type: "album", 
+          url: a.cover_url, 
+          title: a.title, 
+          subcategory: a.subcategory,
+          sortDate: a.created_at
+        }));
+      }
+
+      albumItems.sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
+      setItems(albumItems);
+      setLoading(false);
     };
-    fetchSettings();
-  }, []);
+
+    fetchGallery();
+  }, [categoriaSlug]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-[#cba37b]" />
+      </div>
+    );
+  }
+
+  if (!rootCategory) {
+    return (
+      <div className="text-center py-32 h-screen flex flex-col justify-center items-center">
+        <h2 className="text-2xl font-serif text-[#2d2422]">Categoria não encontrada</h2>
+        <Link href="/ensaios" className="mt-4 inline-block text-sm text-[#cba37b]">Voltar para Ensaios</Link>
+      </div>
+    );
+  }
+
+  const isDark = rootCategory.theme === "dark";
+
+  const renderSection = (subcatSlug: string, sectionTitle: string) => {
+    const filteredItems = items.filter(item => item.subcategory === subcatSlug);
+    
+    if (filteredItems.length === 0) {
+      return (
+        <div className={clsx(
+          "mb-24 text-center py-20 rounded-xl border",
+          isDark ? "bg-[#151110] border-white/5 text-[#f4ede8]" : "bg-[#f2eee9] border-[#2d2422]/10 text-[#2d2422]"
+        )}>
+           <Heart size={24} className="mx-auto text-[#cba37b] mb-4" />
+           <h3 className="font-serif text-xl mb-2">Ainda não há ensaios publicados nesta categoria.</h3>
+           <p className="opacity-60 text-sm">Em breve teremos novas histórias aqui!</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mb-24">
+        <motion.div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
+          {filteredItems.map((item, idx) => (
+            <motion.div 
+              key={item.id}
+              initial={{ opacity: 0, scale: 0.95, y: 50 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.8, delay: (idx % 10) * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full overflow-hidden group cursor-pointer break-inside-avoid bg-muted mb-4 rounded-xl shadow-sm"
+            >
+              <Link href={`/ensaio?id=${item.id}`} className="block relative w-full h-full">
+                <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.4 }} className="w-full h-full">
+                  <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
+                    <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
+                    <h3 className="text-white font-serif text-2xl">{item.title}</h3>
+                  </div>
+                </motion.div>
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
+    );
+  };
 
   return (
-    <div className="w-full bg-[#0a0807] text-[#f4ede8] flex flex-col overflow-hidden min-h-screen">
-      
-      {/* 1. HERO SPLIT BACKGROUND */}
-      <section className="relative w-full h-[70vh] md:h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Background Splitting */}
-        <div className="absolute inset-0 flex">
-          <div className="relative flex-1 h-full">
-            <Image src={settings.portfolio_hero_social} alt="Social" fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
-          </div>
-          <div className="relative flex-1 h-full">
-            <Image src={settings.portfolio_hero_pet} alt="Pet" fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-l from-black/90 via-black/50 to-transparent" />
-          </div>
-        </div>
-
-        {/* Dark overlay at bottom for smooth transition */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0807] to-transparent z-10" />
-
-        {/* Content */}
-        <div className="relative z-20 text-center flex flex-col items-center px-6">
+    <div className={clsx(
+      "pt-32 pb-24 min-h-screen transition-colors duration-500",
+      isDark ? "bg-[#0f0c0b]" : "bg-[#f4ede8]"
+    )}>
+      <div className="w-full max-w-7xl mx-auto px-6 md:px-12">
+        <header className="text-center mb-16 px-4">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-5xl md:text-8xl font-serif tracking-widest text-white mb-6"
+            className={clsx(
+              "text-4xl md:text-5xl font-serif mb-4",
+              isDark ? "text-[#f4ede8]" : "text-[#2d2422]"
+            )}
           >
-            PORTFÓLIO
+            {rootCategory.name}
           </motion.h1>
-          
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-col items-center mb-10"
-          >
-            <Heart size={14} className="text-[#cba37b] mb-4" />
-            <p className="text-white/80 font-light text-sm md:text-base">
-              Histórias que ficam.<br/>Momentos que viram memórias.
-            </p>
-          </motion.div>
-
-          <motion.div 
+          <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-col md:flex-row gap-4 md:gap-8"
+            transition={{ delay: 0.1 }}
+            className={clsx(
+              "text-lg max-w-2xl mx-auto mb-8 font-light",
+              isDark ? "text-[#f4ede8]/70" : "text-[#2d2422]/70"
+            )}
           >
-            <Link href="#ensaios-sociais" className="inline-flex items-center justify-center gap-3 border border-white/20 hover:border-[#cba37b] text-white px-8 py-3 rounded-full text-[10px] uppercase tracking-widest transition-colors bg-black/40 backdrop-blur-sm">
-              <User size={14} className="text-[#cba37b]" /> Fotografia Social
+            {rootCategory.description}
+          </motion.p>
+          
+          {selectedFolder ? (
+            <button onClick={() => setSelectedFolder(null)} className="inline-flex items-center text-sm uppercase tracking-widest font-medium text-[#cba37b] hover:text-[#cba37b]/70 transition-colors">
+                <ArrowLeft className="mr-2 w-4 h-4" /> Voltar para Categorias
+            </button>
+          ) : (
+            <Link href="/ensaios" className={clsx(
+              "inline-flex items-center text-[10px] uppercase tracking-widest font-medium transition-colors",
+              isDark ? "text-[#f4ede8]/50 hover:text-white" : "text-[#2d2422]/50 hover:text-[#2d2422]"
+            )}>
+                <ArrowLeft className="mr-2 w-4 h-4" /> Voltar para Ensaios
             </Link>
-            <Link href="#ensaios-pet" className="inline-flex items-center justify-center gap-3 border border-white/20 hover:border-[#cba37b] text-white px-8 py-3 rounded-full text-[10px] uppercase tracking-widest transition-colors bg-black/40 backdrop-blur-sm">
-              <PawPrint size={14} className="text-[#cba37b]" /> Fotografia Pet
-            </Link>
-          </motion.div>
-        </div>
-      </section>
+          )}
+        </header>
 
-      {/* 2. DESTAQUES (MASONRY GRID) */}
-      <section className="py-24 px-4 md:px-8 max-w-[1400px] mx-auto w-full relative z-20">
-        <div className="text-center mb-12 flex flex-col items-center">
-          <h2 className="text-xl md:text-2xl tracking-[0.3em] font-serif text-white mb-4">DESTAQUES</h2>
-          <Heart size={12} className="text-[#cba37b] mb-4" />
-          <span className="text-[10px] uppercase tracking-widest text-white/50">Uma seleção especial de momentos inesquecíveis.</span>
-        </div>
-
-        {/* Masonry CSS */}
-        <div className="columns-1 sm:columns-2 lg:columns-4 gap-4 space-y-4">
-          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_1} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_2} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_3} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-square rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_4} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-video rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_5} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-square rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_6} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-[3/2] rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_7} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_8} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-          <div className="relative w-full aspect-square rounded-lg overflow-hidden group break-inside-avoid">
-            <Image src={settings.portfolio_mosaic_9} alt="Destaque" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-          </div>
-        </div>
-      </section>
-
-      {/* DIVISOR */}
-      <div className="w-full flex justify-center py-8">
-        <div className="h-16 w-[1px] bg-white/10" />
+        <AnimatePresence mode="popLayout">
+          {!selectedFolder ? (
+            // Visão de Pastas
+            <motion.div 
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-24"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            >
+              {folders.map((folder) => (
+                <motion.div
+                  key={folder.id}
+                  whileHover={{ scale: 1.02 }}
+                  onClick={() => setSelectedFolder(folder.slug)}
+                  className="relative aspect-square md:aspect-[4/5] rounded-xl overflow-hidden cursor-pointer group shadow-md"
+                >
+                  {folder.cover_url ? (
+                    <img src={folder.cover_url} alt={folder.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" />
+                  ) : (
+                    <div className="w-full h-full bg-black/5 flex items-center justify-center transition-transform duration-1000 group-hover:scale-105">
+                      <ImageIcon className="w-12 h-12 text-[#cba37b]/30" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
+                    <h3 className="text-white font-serif text-2xl mb-1">{folder.name}</h3>
+                    <div className="w-8 h-1 bg-[#cba37b] rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            // Visão de Álbum da Pasta Selecionada
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              {renderSection(selectedFolder, folders.find(f => f.slug === selectedFolder)?.name || "Portfólio")}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* 3. ENSAIOS SOCIAIS */}
-      <section id="ensaios-sociais" className="py-16">
-        <div className="text-center mb-12 flex flex-col items-center">
-          <h2 className="text-xl md:text-2xl tracking-[0.3em] font-serif text-white mb-4">ENSAIOS SOCIAIS</h2>
-          <Heart size={12} className="text-[#cba37b]" />
-        </div>
-
-        <div className="w-full relative px-4 md:px-8 max-w-[1600px] mx-auto">
-          <div className="flex overflow-x-auto gap-4 md:gap-6 pb-8 no-scrollbar snap-x snap-mandatory items-center justify-start md:justify-center">
-            {[
-              { id: 'casamentos', title: 'CASAMENTOS', img: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc' },
-              { id: 'debutantes', title: 'DEBUTANTES', img: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8' },
-              { id: 'gestantes', title: 'GESTANTES', img: 'https://images.unsplash.com/photo-1519064438069-5c742354c0e6' },
-              { id: 'familia', title: 'FAMÍLIA', img: 'https://images.unsplash.com/photo-1511895426328-dc8714191300' },
-              { id: 'casais', title: 'CASAIS', img: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2' },
-              { id: 'formandos', title: 'FORMANDOS', img: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1' },
-              { id: 'eventos', title: 'EVENTOS', img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622' },
-            ].map((cat) => (
-              <Link key={cat.id} href={`/portfolio/social?tag=${cat.id}`} className="relative flex-none w-48 md:w-56 aspect-[2/3] rounded-lg overflow-hidden group snap-center cursor-pointer">
-                <Image src={`${cat.img}?q=80&w=600&auto=format&fit=crop`} alt={cat.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0807] via-black/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute bottom-6 left-0 right-0 text-center px-4">
-                  <h3 className="text-white text-[11px] uppercase tracking-[0.2em] font-medium mb-2">{cat.title}</h3>
-                  <span className="text-[#cba37b] text-[8px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex justify-center items-center">
-                    Ver Álbum <ArrowRight className="ml-1 w-2 h-2" />
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          <div className="flex justify-center mt-8">
-            <Link href="/portfolio/social" className="inline-flex items-center text-[10px] uppercase tracking-widest text-white/70 border border-white/10 px-8 py-3 rounded-sm hover:border-[#cba37b] hover:text-[#cba37b] transition-colors">
-              Ver Todos os Álbuns Sociais <ArrowRight className="ml-3 w-3 h-3" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* DIVISOR */}
-      <div className="w-full flex justify-center py-8">
-        <div className="h-16 w-[1px] bg-white/10" />
-      </div>
-
-      {/* 4. ENSAIOS PET */}
-      <section id="ensaios-pet" className="py-16">
-        <div className="text-center mb-12 flex flex-col items-center">
-          <h2 className="text-xl md:text-2xl tracking-[0.3em] font-serif text-white mb-4">ENSAIOS PET</h2>
-          <Heart size={12} className="text-[#cba37b]" />
-        </div>
-
-        <div className="w-full relative px-4 md:px-8 max-w-[1600px] mx-auto">
-          <div className="flex overflow-x-auto gap-4 md:gap-6 pb-8 no-scrollbar snap-x snap-mandatory items-center justify-start md:justify-center">
-            {[
-              { id: 'externo', title: 'ENSAIO EXTERNO', img: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8' },
-              { id: 'estudio', title: 'ESTÚDIO', img: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b' },
-              { id: 'pet-e-familia', title: 'PETS E FAMÍLIA', img: 'https://images.unsplash.com/photo-1505628346881-b72b27e84530' },
-              { id: 'filhotes', title: 'FILHOTES', img: 'https://images.unsplash.com/photo-1591160690555-5debfba289f0' },
-              { id: 'datas-especiais', title: 'DATAS ESPECIAIS', img: 'https://images.unsplash.com/photo-1517423568366-8b83523034fd' },
-              { id: 'aniversarios-pet', title: 'ANIVERSÁRIOS PET', img: 'https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a' },
-              { id: 'gatos', title: 'GATOS', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba' },
-            ].map((cat) => (
-              <Link key={cat.id} href={`/portfolio/pet?tag=${cat.id}`} className="relative flex-none w-48 md:w-56 aspect-[2/3] rounded-lg overflow-hidden group snap-center cursor-pointer">
-                <Image src={`${cat.img}?q=80&w=600&auto=format&fit=crop`} alt={cat.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0807] via-black/20 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute bottom-6 left-0 right-0 text-center px-4">
-                  <h3 className="text-white text-[11px] uppercase tracking-[0.2em] font-medium mb-2">{cat.title}</h3>
-                  <span className="text-[#cba37b] text-[8px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex justify-center items-center">
-                    Ver Álbum <ArrowRight className="ml-1 w-2 h-2" />
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          <div className="flex justify-center mt-8">
-            <Link href="/portfolio/pet" className="inline-flex items-center text-[10px] uppercase tracking-widest text-white/70 border border-white/10 px-8 py-3 rounded-sm hover:border-[#cba37b] hover:text-[#cba37b] transition-colors">
-              Ver Todos os Álbuns Pet <ArrowRight className="ml-3 w-3 h-3" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. CTA FINAL */}
-      <section className="relative mt-24 py-24 border-t border-white/5 bg-[#100c0a] overflow-hidden">
-         <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <Image src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" alt="Background Texture" fill className="object-cover" />
-         </div>
-         <div className="container mx-auto px-6 relative z-10 flex flex-col md:flex-row items-center gap-16 md:gap-24">
-            
-            <div className="flex-1 w-full relative aspect-video md:aspect-[4/3] rounded-xl overflow-hidden shadow-2xl border border-white/5">
-               <Image src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=1200&auto=format&fit=crop" alt="Câmera" fill className="object-cover" />
-               <div className="absolute inset-0 bg-black/30" />
-            </div>
-
-            <div className="flex-1">
-               <span className="text-[10px] uppercase tracking-widest text-white/50 block mb-2">Cada clique é feito com propósito:</span>
-               <h3 className="text-3xl md:text-5xl font-serif text-[#cba37b] mb-8 font-light">
-                  registrar o que realmente importa.
-               </h3>
-               
-               <p className="text-sm font-light text-white/70 mb-10">Vamos criar memórias juntos?</p>
-               
-               <Link href="/contato" className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white border border-white/20 px-8 py-4 rounded hover:border-[#cba37b] hover:text-[#cba37b] transition-colors mb-16">
-                 Solicitar Orçamento <ArrowRight className="ml-3 w-4 h-4" />
-               </Link>
-
-               <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="flex flex-col items-center">
-                     <User size={20} className="text-[#cba37b] mb-3" />
-                     <span className="text-[8px] uppercase tracking-widest text-white/60">Atendimento<br/>Personalizado</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                     <Clock size={20} className="text-[#cba37b] mb-3" />
-                     <span className="text-[8px] uppercase tracking-widest text-white/60">Entrega<br/>Rápida e Segura</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                     <Heart size={20} className="text-[#cba37b] mb-3" />
-                     <span className="text-[8px] uppercase tracking-widest text-white/60">Experiência<br/>Completa</span>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </section>
-
     </div>
+  );
+}
+
+export default function DynamicPortfolioPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20 min-h-screen bg-[#f4ede8]"><Loader2 className="w-8 h-8 animate-spin text-[#cba37b]" /></div>}>
+       <DynamicGalleryContent />
+    </Suspense>
   );
 }
