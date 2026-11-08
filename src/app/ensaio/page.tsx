@@ -108,7 +108,7 @@ function EnsaioContent() {
           {/* Botão Voltar */}
           <Link 
             href={`/portfolio?categoria=${album.category}`}
-            className="absolute top-8 left-6 md:left-12 z-50 text-white/70 hover:text-white transition-colors inline-flex items-center text-sm uppercase tracking-widest bg-black/20 px-4 py-2 rounded-full backdrop-blur-md"
+            className="absolute top-24 md:top-32 left-6 md:left-12 z-50 text-white/70 hover:text-white transition-colors inline-flex items-center text-sm uppercase tracking-widest bg-black/30 hover:bg-black/50 px-5 py-2.5 rounded-full backdrop-blur-md"
           >
             <ArrowLeft className="mr-2 w-4 h-4" /> Voltar
           </Link>

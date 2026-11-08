@@ -39,7 +39,7 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
   const rootCategories = categories.filter(c => !c.parent_id && !c.is_hidden).slice(0, 2); // Pega até as 2 primeiras pra não quebrar o layout do footer
 
   return (
-    <footer className="bg-background text-foreground pt-20 pb-8 border-t border-accent">
+    <footer className="relative bg-background text-foreground pt-20 pb-8 border-t border-accent">
       <div className="container mx-auto px-6 md:px-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           
@@ -139,6 +139,15 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
             Desenvolvido com ♥
           </p>
         </div>
+        {/* Easter Egg Piratinha */}
+        <div className="absolute bottom-0 right-4 md:right-24 w-16 h-16 md:w-20 md:h-20 z-50 overflow-hidden cursor-pointer group">
+          <img
+            src="/pirata.png"
+            alt="Pirata Easter Egg"
+            className="w-full h-full object-contain transform translate-y-12 group-hover:translate-y-0 transition-transform duration-500 ease-out hover:animate-pulse"
+          />
+        </div>
+
       </div>
     </footer>
   );

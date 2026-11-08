@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -81,7 +81,7 @@ const defaultSettingsPositions: Record<string, string> = {
 export default function Home() {
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
   const router = useRouter();
-
+  const highlightCarouselRef = useRef<HTMLDivElement>(null);
 
   const [highlightPhotos, setHighlightPhotos] = useState<Photo[]>([]);
   const [instaPhotos, setInstaPhotos] = useState<Photo[]>([]);
@@ -94,6 +94,15 @@ export default function Home() {
   const [masonryPhotos2, setMasonryPhotos2] = useState<Photo[]>([]);
   const [masonryTitle2, setMasonryTitle2] = useState<string>("");
   const [masonryLink2, setMasonryLink2] = useState<string>("");
+
+  const scrollHighlightCarousel = (direction: "left" | "right") => {
+    if (!highlightCarouselRef.current) return;
+    const scrollAmount = 340;
+    highlightCarouselRef.current.scrollBy({
+      left: direction === "left" ? -scrollAmount : scrollAmount,
+      behavior: "smooth",
+    });
+  };
 
   useEffect(() => {
     const fetchPhotos = async () => {
@@ -139,7 +148,7 @@ export default function Home() {
           const { data: aData } = await supabase.from("albums").select("title, category").eq("id", mAlbum).single();
           if (aData) {
             setMasonryTitle(aData.title);
-            setMasonryLink(`/portfolio?categoria=${aData.category}`);
+            setMasonryLink(`/ensaio?id=${mAlbum}`);
           }
 
           const { data: mData } = await supabase
@@ -156,7 +165,7 @@ export default function Home() {
           const { data: aData2 } = await supabase.from("albums").select("title, category").eq("id", mAlbum2).single();
           if (aData2) {
             setMasonryTitle2(aData2.title);
-            setMasonryLink2(`/portfolio?categoria=${aData2.category}`);
+            setMasonryLink2(`/ensaio?id=${mAlbum2}`);
           }
 
           const { data: mData2 } = await supabase
@@ -180,14 +189,12 @@ export default function Home() {
   };
 
   return (
-    <div id="home-scroller" className="h-screen w-full bg-background overflow-y-scroll overflow-x-hidden text-foreground snap-y snap-mandatory scroll-smooth">
+    <div id="home-scroller" className="h-screen w-full bg-background overflow-y-scroll overflow-x-hidden text-foreground md:snap-y md:snap-proximity scroll-smooth">
       
       {/* 1. Hero Split-Screen */}
       <section className="relative h-screen w-full flex flex-col md:flex-row overflow-hidden snap-start">
         {/* Navbar overlay gradient to ensure visibility at top */}
         <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/80 to-transparent z-10 pointer-events-none" />
-
-
 
         {/* Esquerda: SOCIAL */}
         <motion.div 
@@ -253,7 +260,6 @@ export default function Home() {
           </div>
         </motion.div>
 
-
         {/* Indicador Central de Rolagem */}
         <motion.div 
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none"
@@ -278,38 +284,63 @@ export default function Home() {
           <div className="w-full flex flex-col justify-center">
             
             <div className="text-center mb-10 px-6">
-              <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Conheça nosso trabalho</span>
+              <span className="text-[10px] uppercase tracking-[0.4em] text-primary block">01 — Destaques</span>
+              <p className="font-serif italic text-lg text-muted-foreground mt-1">Conheça nosso trabalho recente</p>
             </div>
             
             {masonryPhotos2.length > 0 && (
-              <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
-                {masonryPhotos2.map((photo) => (
-                  <div key={photo.id} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[35vh] lg:h-[40vh]">
-                    <Image
-                      src={photo.url}
-                      alt={photo.category}
-                      fill
-                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  </div>
-                ))}
+              <div className="relative group/strip w-full">
+                <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
+                  {masonryPhotos2.map((photo) => (
+                    <Link
+                      href={masonryLink2 || "/portfolio"}
+                      key={photo.id}
+                      className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[35vh] lg:h-[40vh] block"
+                    >
+                      <Image
+                        src={photo.url}
+                        alt={photo.category}
+                        fill
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
+                        {masonryTitle2 && (
+                          <span className="text-[10px] uppercase tracking-[0.25em] text-white/90 flex items-center gap-1.5">
+                            {masonryTitle2} <ArrowRight className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
 
             {masonryPhotos.length > 0 && (
-              <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
-                {masonryPhotos.map((photo) => (
-                  <div key={photo.id} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[35vh] lg:h-[40vh]">
-                    <Image
-                      src={photo.url}
-                      alt={photo.category}
-                      fill
-                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  </div>
-                ))}
+              <div className="relative group/strip w-full">
+                <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
+                  {masonryPhotos.map((photo) => (
+                    <Link
+                      href={masonryLink || "/portfolio"}
+                      key={photo.id}
+                      className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[35vh] lg:h-[40vh] block"
+                    >
+                      <Image
+                        src={photo.url}
+                        alt={photo.category}
+                        fill
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
+                        {masonryTitle && (
+                          <span className="text-[10px] uppercase tracking-[0.25em] text-white/90 flex items-center gap-1.5">
+                            {masonryTitle} <ArrowRight className="w-3 h-3" />
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -321,7 +352,10 @@ export default function Home() {
         <div className="container mx-auto px-6 md:px-12">
           <div className="flex flex-col md:flex-row items-center gap-16">
             <div className="flex-1 space-y-6">
-              <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Fotografar É</span>
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-[1px] bg-primary/50" />
+                <span className="text-[10px] uppercase tracking-[0.4em] text-primary">02 — O Olhar · Fotografar É</span>
+              </div>
               <h2 className="text-4xl md:text-5xl font-serif leading-[1.2]">
                 Conectar almas <br/>
                 <span className="italic font-light text-primary">e eternizar</span> emoções.
@@ -333,31 +367,44 @@ export default function Home() {
                 Muito além de cliques roteirizados, meu propósito é criar uma experiência onde você e quem você ama possam simplesmente ser quem são. O resultado? Memórias autênticas que aquecem o peito todas as vezes que você olhar para trás.
               </p>
               <div className="pt-8">
-                <Link href="/sobre" className="inline-flex items-center text-[10px] uppercase tracking-widest text-primary hover:text-foreground transition-colors font-medium border-b border-primary/30 pb-1">
-                  Conheça minha história <ArrowRight className="ml-2 w-3 h-3" />
+                <Link href="/sobre" className="inline-flex items-center text-[10px] uppercase tracking-widest text-primary hover:text-foreground transition-colors font-medium border-b border-primary/30 hover:border-foreground pb-1.5 group">
+                  Conheça minha história <ArrowRight className="ml-2 w-3 h-3 transition-transform group-hover:translate-x-1" />
                 </Link>
               </div>
             </div>
             
             <div className="flex-1 relative w-full aspect-[4/3] md:aspect-square">
               {/* Main Photo */}
-              <div className="absolute right-0 top-0 w-4/5 h-4/5 rounded-t-[40px] rounded-br-[40px] rounded-bl-sm overflow-hidden shadow-2xl">
+              <div className="absolute right-0 top-0 w-4/5 h-4/5 rounded-t-[40px] rounded-br-[40px] rounded-bl-sm overflow-hidden shadow-2xl border border-accent">
                 <Image
                   src={settings.home_sobre_mosaic_1}
                   alt="Karoline Garcia"
                   fill
                   className="object-cover"
+                  style={{ objectPosition: settingsPositions.home_sobre_mosaic_1 || '50% 50%' }}
                 />
               </div>
               {/* Polaroids Decorativas */}
-              <div className="absolute left-0 bottom-10 w-2/5 aspect-[3/4] bg-white p-2 pb-8 shadow-xl -rotate-6 z-10 hidden md:block">
+              <div className="absolute left-0 bottom-10 w-2/5 aspect-[3/4] bg-white p-2 pb-8 shadow-xl -rotate-6 hover:-rotate-2 transition-transform duration-500 z-10 hidden md:block">
                 <div className="relative w-full h-full overflow-hidden bg-muted">
-                  <Image src={settings.home_sobre_mosaic_2} alt="Polaroid 1" fill className="object-cover" />
+                  <Image
+                    src={settings.home_sobre_mosaic_2}
+                    alt="Polaroid 1"
+                    fill
+                    className="object-cover"
+                    style={{ objectPosition: settingsPositions.home_sobre_mosaic_2 || '50% 50%' }}
+                  />
                 </div>
               </div>
-              <div className="absolute left-24 bottom-0 w-2/5 aspect-[3/4] bg-white p-2 pb-8 shadow-xl rotate-3 z-20 hidden md:block">
+              <div className="absolute left-24 bottom-0 w-2/5 aspect-[3/4] bg-white p-2 pb-8 shadow-xl rotate-3 hover:rotate-0 transition-transform duration-500 z-20 hidden md:block">
                 <div className="relative w-full h-full overflow-hidden bg-muted">
-                   <Image src={settings.home_sobre_mosaic_3} alt="Polaroid 2" fill className="object-cover" />
+                  <Image
+                    src={settings.home_sobre_mosaic_3}
+                    alt="Polaroid 2"
+                    fill
+                    className="object-cover"
+                    style={{ objectPosition: settingsPositions.home_sobre_mosaic_3 || '50% 50%' }}
+                  />
                 </div>
                 <div className="absolute bottom-2 right-4 text-xs font-serif italic text-black opacity-60">fotografar é sentir ♥</div>
               </div>
@@ -369,18 +416,38 @@ export default function Home() {
       {/* 3. Portfólio em Destaque */}
       {highlightPhotos.length > 0 && (
         <section className="min-h-screen py-24 bg-background overflow-hidden border-t border-accent flex flex-col items-center justify-center snap-start w-full">
-          <div className="text-center mb-16 px-6">
-            <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Portfólio em Destaque</span>
-            <h2 className="font-serif text-3xl md:text-5xl mt-3">
-              Histórias <span className="italic font-light text-primary">que ficam.</span>
-            </h2>
+          <div className="container mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center md:items-end justify-between mb-12 gap-6">
+            <div className="text-center md:text-left">
+              <span className="text-[10px] uppercase tracking-[0.4em] text-primary">03 — Portfólio em Destaque</span>
+              <h2 className="font-serif text-3xl md:text-5xl mt-3">
+                Histórias <span className="italic font-light text-primary">que ficam.</span>
+              </h2>
+            </div>
+
+            {/* Controles Editoriais do Carrossel */}
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={() => scrollHighlightCarousel("left")}
+                aria-label="Anterior"
+                className="w-11 h-11 rounded-full border border-accent flex items-center justify-center text-foreground hover:border-primary hover:bg-primary hover:text-white transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => scrollHighlightCarousel("right")}
+                aria-label="Próximo"
+                className="w-11 h-11 rounded-full border border-accent flex items-center justify-center text-foreground hover:border-primary hover:bg-primary hover:text-white transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="w-full relative px-6 md:px-12 group">
             {/* Carousel Container */}
-            <div className="flex overflow-x-auto gap-4 md:gap-6 pb-8 no-scrollbar snap-x">
-              {highlightPhotos.map((photo, i) => (
-                <Link key={photo.id} href={`/portfolio`} className="relative flex-none w-64 md:w-80 aspect-[3/4] rounded-2xl overflow-hidden group/card snap-center">
+            <div ref={highlightCarouselRef} className="flex overflow-x-auto gap-4 md:gap-6 pb-8 no-scrollbar snap-x">
+              {highlightPhotos.map((photo) => (
+                <Link key={photo.id} href={`/portfolio`} className="relative flex-none w-64 md:w-80 aspect-[3/4] rounded-2xl overflow-hidden group/card snap-center shadow-sm">
                   <Image
                     src={photo.url}
                     alt={photo.category}
@@ -399,7 +466,7 @@ export default function Home() {
           </div>
 
           <div className="flex justify-center mt-8">
-            <Link href="/portfolio" className="inline-flex items-center text-[10px] uppercase tracking-widest text-foreground border border-white/20 px-8 py-4 rounded hover:bg-white hover:text-black transition-colors">
+            <Link href="/portfolio" className="inline-flex items-center text-[10px] uppercase tracking-widest text-foreground border border-primary/40 px-8 py-4 rounded hover:bg-foreground hover:text-background hover:border-foreground transition-all">
               Ver Todos os Álbuns <ArrowRight className="ml-3 w-4 h-4" />
             </Link>
           </div>
@@ -410,7 +477,7 @@ export default function Home() {
       <section className="min-h-screen py-24 bg-secondary flex items-center justify-center snap-start w-full">
         <div className="container mx-auto px-6 md:px-12">
           <div className="text-center mb-16">
-            <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Prepare-se para o seu momento</span>
+            <span className="text-[10px] uppercase tracking-[0.4em] text-primary">04 — Prepare-se para o seu momento</span>
             <h2 className="font-serif text-3xl md:text-5xl mt-3 text-foreground">
               Dicas de <span className="italic font-light text-primary">Ensaios.</span>
             </h2>
@@ -418,7 +485,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* Card Social */}
-            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm border border-accent relative overflow-hidden group">
+            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow border border-accent relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-6 opacity-5 text-primary pointer-events-none transition-transform duration-1000 group-hover:scale-125">
                 <Camera size={180} strokeWidth={1} />
               </div>
@@ -435,7 +502,7 @@ export default function Home() {
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">O melhor horário para fotos externas é na "golden hour" (início da manhã ou fim da tarde).</span>
+                  <span className="text-muted-foreground font-light leading-relaxed text-sm md:text-base">O melhor horário para fotos externas é na &ldquo;golden hour&rdquo; (início da manhã ou fim da tarde).</span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="w-5 h-5 text-primary mr-4 shrink-0 mt-0.5" />
@@ -453,7 +520,7 @@ export default function Home() {
             </div>
 
             {/* Card Pet */}
-            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm border border-accent relative overflow-hidden group h-full">
+            <div className="bg-background rounded-2xl p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow border border-accent relative overflow-hidden group h-full">
               <div className="absolute top-0 right-0 p-6 opacity-5 text-primary pointer-events-none transition-transform duration-1000 group-hover:scale-125">
                 <Heart size={180} strokeWidth={1} />
               </div>
@@ -493,26 +560,29 @@ export default function Home() {
       {/* 5. Depoimentos */}
       <section className="min-h-screen py-24 bg-secondary border-y border-accent flex flex-col items-center justify-center snap-start w-full">
         <div className="container mx-auto px-6 md:px-12 text-center">
-          <span className="text-[10px] uppercase tracking-[0.4em] text-primary">Depoimentos</span>
+          <span className="text-[10px] uppercase tracking-[0.4em] text-primary">05 — Depoimentos</span>
           <h2 className="font-serif text-3xl md:text-5xl mt-3 mb-16">
             Palavras que aquecem <span className="italic font-light text-primary">o coração.</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {testimonials.map((test) => (
-              <div key={test.id} className="bg-background p-8 rounded-xl text-left border border-accent flex flex-col shadow-sm">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-full overflow-hidden relative">
+              <div key={test.id} className="relative bg-background p-8 rounded-xl text-left border border-accent flex flex-col shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 overflow-hidden">
+                <span className="absolute top-3 right-6 font-serif text-7xl text-primary/15 leading-none select-none pointer-events-none">
+                  &ldquo;
+                </span>
+                <div className="flex items-center gap-4 mb-6 relative z-10">
+                  <div className="w-12 h-12 rounded-full overflow-hidden relative ring-2 ring-primary/20">
                     <Image src={test.avatar} alt={test.name} fill className="object-cover" />
                   </div>
                   <div>
-                    <div className="flex text-primary mb-1">
+                    <div className="flex text-primary mb-1 gap-0.5">
                       {[...Array(test.rating)].map((_, i) => <Star key={i} size={12} fill="currentColor" />)}
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-light text-foreground/90 italic mb-6 flex-grow">"{test.text}"</p>
-                <div>
+                <p className="text-sm font-light text-foreground/90 italic mb-6 flex-grow leading-relaxed relative z-10">&ldquo;{test.text}&rdquo;</p>
+                <div className="pt-4 border-t border-accent/60 relative z-10">
                   <p className="text-sm font-medium">{test.name}</p>
                   <p className="text-[10px] uppercase tracking-widest text-primary mt-1">{test.category}</p>
                 </div>
@@ -523,18 +593,28 @@ export default function Home() {
       </section>
 
       {/* 6. CTA Vamos contar a sua história */}
-      <section className="relative min-h-screen flex items-center justify-center py-32 overflow-hidden snap-start w-full bg-foreground">
-        <div className="absolute inset-0 z-0 bg-foreground" />
+      <section className="relative min-h-screen flex items-center justify-center py-32 overflow-hidden snap-start w-full bg-foreground group">
+        <div className="absolute inset-0 z-0">
+          <Image
+            src={settings.home_hero_bg}
+            alt="Vamos contar a sua história"
+            fill
+            className="object-cover transition-transform duration-[3s] group-hover:scale-105 opacity-35"
+            style={{ objectPosition: settingsPositions.home_hero_bg || '50% 50%' }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/60 to-black/75" />
+        </div>
         
         <div className="relative z-10 container mx-auto px-6 text-center max-w-3xl">
-          <h2 className="font-serif text-4xl md:text-6xl text-background mb-6">Vamos contar a sua história?</h2>
-          <p className="text-background/80 font-light text-sm md:text-base mb-10 max-w-xl mx-auto">
+          <span className="text-[10px] uppercase tracking-[0.4em] text-primary mb-4 block">Agende sua sessão</span>
+          <h2 className="font-serif text-4xl md:text-6xl text-white mb-6">Vamos contar a sua história?</h2>
+          <p className="text-white/80 font-light text-sm md:text-base mb-10 max-w-xl mx-auto leading-relaxed">
             Será um prazer registrar momentos que farão parte da sua história para sempre. Entre em contato para conversarmos sobre o seu ensaio.
           </p>
           <a 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-black bg-primary px-8 py-4 rounded hover:bg-white transition-colors" 
+            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white bg-primary px-8 py-4 rounded hover:bg-white hover:text-black transition-all shadow-lg" 
             href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
           >
             <MessageCircle className="mr-3 w-4 h-4" /> Solicitar Orçamento
@@ -552,8 +632,8 @@ export default function Home() {
           
           <div className="flex overflow-x-auto w-full no-scrollbar">
             {instaPhotos.map((photo) => (
-              <a key={photo.id} href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="relative flex-none w-1/3 md:w-1/5 lg:w-[14.28%] aspect-square group">
-                <Image src={photo.url} alt="Instagram post" fill className="object-cover" />
+              <a key={photo.id} href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="relative flex-none w-1/3 md:w-1/5 lg:w-[14.28%] aspect-square group overflow-hidden">
+                <Image src={photo.url} alt="Instagram post" fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-300 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
                 </div>
@@ -562,7 +642,7 @@ export default function Home() {
           </div>
           
           <div className="text-center mt-10">
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-[10px] uppercase tracking-widest text-muted-foreground border border-white/10 px-6 py-3 rounded hover:bg-white hover:text-black transition-colors">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-[10px] uppercase tracking-widest text-foreground border border-primary/40 px-6 py-3 rounded hover:bg-foreground hover:text-background hover:border-foreground transition-all">
               Seguir no Instagram <ArrowRight className="ml-2 w-3 h-3" />
             </a>
           </div>

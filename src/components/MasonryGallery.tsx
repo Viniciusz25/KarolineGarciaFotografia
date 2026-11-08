@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import clsx from "clsx";
 
 interface Photo {
   id: string;
@@ -20,6 +21,8 @@ interface MasonryGalleryProps {
 export default function MasonryGallery({ photos }: MasonryGalleryProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loadedIds, setLoadedIds] = useState<Record<string, boolean>>({});
+  const touchStartX = useRef<number | null>(null);
 
   const openLightbox = (index: number) => {
     setCurrentIndex(index);
@@ -27,88 +30,140 @@ export default function MasonryGallery({ photos }: MasonryGalleryProps) {
     document.body.style.overflow = "hidden";
   };
 
-  const closeLightbox = () => {
+  const closeLightbox = useCallback(() => {
     setLightboxOpen(false);
     document.body.style.overflow = "auto";
-  };
+  }, []);
 
-  const nextPhoto = (e?: React.MouseEvent) => {
+  const nextPhoto = useCallback((e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setCurrentIndex((prev) => (prev + 1) % photos.length);
-  };
+  }, [photos.length]);
 
-  const prevPhoto = (e?: React.MouseEvent) => {
+  const prevPhoto = useCallback((e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  }, [photos.length]);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowRight") nextPhoto();
+      else if (e.key === "ArrowLeft") prevPhoto();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxOpen, closeLightbox, nextPhoto, prevPhoto]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(deltaX) > 45) {
+      if (deltaX < 0) nextPhoto();
+      else prevPhoto();
+    }
+    touchStartX.current = null;
+  };
+
+  const markLoaded = (id: string) => {
+    setLoadedIds((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
   };
 
   return (
     <>
       {/* CSS Masonry */}
       <div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4">
-        {photos.map((photo, index) => (
-          <motion.div
-            key={photo.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.5, delay: (index % 10) * 0.1 }}
-            className="break-inside-avoid cursor-pointer overflow-hidden rounded-xl group relative"
-            onClick={() => openLightbox(index)}
-          >
-            <Image
-              src={photo.url}
-              alt={photo.alt || "Fotografia"}
-              width={photo.width}
-              height={photo.height}
-              className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
-              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-          </motion.div>
-        ))}
+        {photos.map((photo, index) => {
+          const isLoaded = !!loadedIds[photo.id];
+          return (
+            <motion.div
+              key={photo.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: (index % 8) * 0.08 }}
+              className="break-inside-avoid cursor-pointer overflow-hidden rounded-xl group relative bg-muted shadow-sm"
+              onClick={() => openLightbox(index)}
+            >
+              {!isLoaded && (
+                <div className="absolute inset-0 bg-muted animate-pulse" />
+              )}
+              <Image
+                src={photo.url}
+                alt={photo.alt || "Fotografia"}
+                width={photo.width}
+                height={photo.height}
+                onLoad={() => markLoaded(photo.id)}
+                className={clsx(
+                  "w-full h-auto object-cover transition-all duration-700 group-hover:scale-105",
+                  isLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
+                )}
+                sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-4">
+                <span className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
+                  <Maximize2 size={14} />
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Lightbox */}
       <AnimatePresence>
-        {lightboxOpen && (
+        {lightboxOpen && photos[currentIndex] && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center"
             onClick={closeLightbox}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
-            {/* Close Button */}
-            <button
-              className="absolute top-4 right-4 md:top-6 md:right-6 text-white hover:text-white transition-colors bg-black/50 hover:bg-black/70 p-2 md:p-3 rounded-full backdrop-blur-md z-50 shadow-lg border border-white/10"
-              onClick={closeLightbox}
-              aria-label="Fechar modal"
-            >
-              <X size={24} className="md:w-8 md:h-8" />
-            </button>
+            {/* Top Bar */}
+            <div className="absolute top-4 left-6 right-6 md:top-6 md:left-10 md:right-10 flex items-center justify-between z-50 pointer-events-none">
+              <div className="text-white/70 font-sans text-xs uppercase tracking-[0.3em] bg-black/40 px-4 py-2 rounded-full backdrop-blur-md border border-white/10">
+                {currentIndex + 1} / {photos.length}
+              </div>
+              <button
+                className="pointer-events-auto text-white/80 hover:text-white transition-colors bg-black/50 hover:bg-black/80 p-2.5 md:p-3 rounded-full backdrop-blur-md shadow-lg border border-white/10 cursor-pointer"
+                onClick={closeLightbox}
+                aria-label="Fechar modal"
+              >
+                <X size={22} className="md:w-6 md:h-6" />
+              </button>
+            </div>
 
             {/* Navigation Buttons */}
             <button
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-4 z-50"
+              className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 p-3 rounded-full backdrop-blur-sm border border-white/10 transition-all z-50 cursor-pointer"
               onClick={prevPhoto}
+              aria-label="Foto anterior"
             >
-              <ChevronLeft size={48} />
+              <ChevronLeft size={32} />
             </button>
             <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white p-4 z-50"
+              className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 text-white/60 hover:text-white bg-black/30 hover:bg-black/60 p-3 rounded-full backdrop-blur-sm border border-white/10 transition-all z-50 cursor-pointer"
               onClick={nextPhoto}
+              aria-label="Próxima foto"
             >
-              <ChevronRight size={48} />
+              <ChevronRight size={32} />
             </button>
 
             {/* Main Image */}
-            <div className="relative w-full h-full max-w-5xl max-h-[85vh] flex items-center justify-center p-4">
+            <div className="relative w-full h-full max-w-5xl max-h-[76vh] flex items-center justify-center p-4 mb-14">
               <motion.div
                 key={currentIndex}
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.25 }}
                 className="relative w-full h-full"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -122,11 +177,36 @@ export default function MasonryGallery({ photos }: MasonryGalleryProps) {
                 />
               </motion.div>
             </div>
-            
-            {/* Image Counter */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 font-sans text-sm">
-              {currentIndex + 1} / {photos.length}
-            </div>
+
+            {/* Filmstrip Thumbnails */}
+            {photos.length > 1 && (
+              <div
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 max-w-[90vw] md:max-w-2xl flex items-center gap-2 overflow-x-auto no-scrollbar px-3 py-2 bg-black/50 backdrop-blur-md rounded-2xl border border-white/10 z-50"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {photos.map((thumb, idx) => (
+                  <button
+                    key={thumb.id}
+                    onClick={() => setCurrentIndex(idx)}
+                    className={clsx(
+                      "relative flex-none w-11 h-11 md:w-13 md:h-13 rounded-lg overflow-hidden transition-all cursor-pointer",
+                      idx === currentIndex
+                        ? "ring-2 ring-primary scale-105 opacity-100"
+                        : "opacity-45 hover:opacity-80"
+                    )}
+                    aria-label={`Ir para foto ${idx + 1}`}
+                  >
+                    <Image
+                      src={thumb.url}
+                      alt={thumb.alt || `Miniatura ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
