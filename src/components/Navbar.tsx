@@ -20,16 +20,23 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  if (pathname?.startsWith("/admin")) {
-    return null;
-  }
-
-  const isHome = pathname === "/";
-  // Na home, fica transparente no topo. Nas outras páginas (como Sobre que é clara), já começa com fundo sólido.
-  const showSolidBackground = isHome ? isScrolled : true;
-  const useWhiteText = isHome ? !isScrolled : false;
+  // Apenas a página /sobre começa com hero de fundo claro; todas as demais têm hero escuro no topo.
+  const isLightHeroPage = pathname?.startsWith("/sobre");
+  const showSolidBackground = isLightHeroPage ? true : isScrolled;
+  const useWhiteText = isLightHeroPage ? false : !isScrolled;
 
   useEffect(() => {
+    const checkInitialScroll = () => {
+      const scroller = document.getElementById("home-scroller");
+      if (scroller) {
+        setIsScrolled(scroller.scrollTop > 20);
+      } else {
+        setIsScrolled(window.scrollY > 20);
+      }
+    };
+
+    checkInitialScroll();
+
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document;
       if (target === document) {
@@ -39,8 +46,7 @@ export default function Navbar() {
       }
     };
 
-    // Tenta encontrar o scroller da home (se existir)
-    const scroller = document.getElementById('home-scroller');
+    const scroller = document.getElementById("home-scroller");
     
     if (scroller) {
       scroller.addEventListener("scroll", handleScroll);
@@ -50,6 +56,10 @@ export default function Navbar() {
       return () => window.removeEventListener("scroll", handleScroll);
     }
   }, [pathname]);
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   return (
     <>

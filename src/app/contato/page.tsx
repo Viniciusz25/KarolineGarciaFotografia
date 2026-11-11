@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { MessageCircle, Mail, Camera, MapPin, Heart, Calendar, ArrowRight } from "lucide-react";
+import { MessageCircle, Mail, Camera, MapPin, Heart, Calendar, ArrowRight, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const defaultSettings = {
-  contato_hero_bg: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?q=80&w=2000&auto=format&fit=crop",
-  contato_studio: "https://images.unsplash.com/photo-1598928506311-c55ded91a20c?q=80&w=1000&auto=format&fit=crop",
+  contato_hero_bg: "",
+  contato_studio: "",
 };
 
 const defaultSettingsPositions: Record<string, string> = {
@@ -20,6 +19,16 @@ const defaultSettingsPositions: Record<string, string> = {
 export default function ContatoPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [settingsPositions, setSettingsPositions] = useState(defaultSettingsPositions);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    sessionType: "",
+    message: "",
+    privacyAccepted: false,
+  });
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -42,6 +51,25 @@ export default function ContatoPage() {
     fetchSettings();
   }, []);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.message.trim()) return;
+
+    const lines = [
+      `Olá, Karoline! Meu nome é *${formData.name.trim()}*.`,
+      formData.sessionType ? `*Tipo de Ensaio:* ${formData.sessionType}` : "",
+      formData.phone ? `*Telefone:* ${formData.phone.trim()}` : "",
+      formData.email ? `*E-mail:* ${formData.email.trim()}` : "",
+      "",
+      `*Mensagem:*`,
+      formData.message.trim(),
+    ].filter(Boolean);
+
+    const whatsappUrl = `https://wa.me/5511940878269?text=${encodeURIComponent(lines.join("\n"))}`;
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    setSubmitted(true);
+  };
+
   return (
     <div className="w-full bg-[#f4ede8] text-[#2d2422] min-h-screen flex flex-col font-sans">
       
@@ -49,14 +77,17 @@ export default function ContatoPage() {
       <section className="relative w-full h-[60vh] md:h-[70vh] bg-[#0a0807] text-[#f4ede8] overflow-hidden flex items-center">
         {/* Background Splitting for Hero */}
         <div className="absolute inset-0 flex flex-col md:flex-row">
-          <div className="relative flex-1 h-full hidden md:block">
-            <Image 
-              src={settings.contato_hero_bg}
-              alt="Fotógrafa" 
-              fill 
-              className="object-cover opacity-80"
-              style={{ objectPosition: settingsPositions.contato_hero_bg || '50% 50%' }}
-            />
+          <div className="relative flex-1 h-full hidden md:block bg-[#0a0807]">
+            {settings.contato_hero_bg && (
+              <Image 
+                src={settings.contato_hero_bg}
+                alt="Fotógrafa" 
+                fill 
+                priority
+                className="object-cover opacity-80"
+                style={{ objectPosition: settingsPositions.contato_hero_bg || '50% 50%' }}
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-[#0a0807]" />
           </div>
           <div className="relative flex-1 h-full bg-[#0a0807]" />
@@ -171,43 +202,98 @@ export default function ContatoPage() {
           </div>
 
           {/* Direita: Formulário Escuro */}
-          <div className="flex-1">
+          <div id="formulario-contato" className="flex-1 scroll-mt-28">
             <div className="bg-[#120f0e] rounded-xl p-8 md:p-12 text-[#f4ede8] shadow-2xl h-full flex flex-col">
               <h3 className="text-[10px] uppercase tracking-[0.3em] font-medium mb-6 flex items-center gap-4">
                 ENVIE SUA MENSAGEM <Heart size={10} className="text-[#cba37b]" />
               </h3>
 
-              <form className="space-y-6 flex-grow flex flex-col" onSubmit={(e) => e.preventDefault()}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <input type="text" placeholder="Nome completo" className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors" />
-                  <input type="text" placeholder="Telefone / WhatsApp" className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors" />
+              {submitted ? (
+                <div className="flex-grow flex flex-col items-center justify-center text-center py-12 space-y-4">
+                  <CheckCircle2 className="w-12 h-12 text-[#cba37b]" />
+                  <h4 className="font-serif text-2xl text-white">Mensagem pronta no WhatsApp!</h4>
+                  <p className="text-sm text-white/60 max-w-sm font-light leading-relaxed">
+                    Abrimos uma conversa direta com a Karoline preenchida com os dados do seu ensaio.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitted(false)}
+                    className="mt-4 text-[10px] uppercase tracking-widest text-[#cba37b] hover:underline cursor-pointer"
+                  >
+                    Enviar outra mensagem
+                  </button>
                 </div>
-                <input type="email" placeholder="E-mail" className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors" />
-                
-                <div className="relative">
-                  <select defaultValue="" className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors appearance-none text-white/50">
-                    <option value="" disabled className="bg-[#120f0e] text-white">Tipo de Ensaio</option>
-                    <option value="casamento" className="bg-[#120f0e] text-white">Casamento</option>
-                    <option value="pet" className="bg-[#120f0e] text-white">Pet</option>
-                    <option value="familia" className="bg-[#120f0e] text-white">Família</option>
-                    <option value="gestante" className="bg-[#120f0e] text-white">Gestante</option>
-                    <option value="outro" className="bg-[#120f0e] text-white">Outro</option>
-                  </select>
-                </div>
+              ) : (
+                <form className="space-y-6 flex-grow flex flex-col" onSubmit={handleSubmit}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nome completo *"
+                      value={formData.name}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                      className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Telefone / WhatsApp"
+                      value={formData.phone}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors"
+                    />
+                  </div>
+                  <input
+                    type="email"
+                    placeholder="E-mail"
+                    value={formData.email}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors"
+                  />
+                  
+                  <div className="relative">
+                    <select
+                      value={formData.sessionType}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, sessionType: e.target.value }))}
+                      className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors appearance-none text-white/80"
+                    >
+                      <option value="" disabled className="bg-[#120f0e] text-white/50">Tipo de Ensaio</option>
+                      <option value="Casamento" className="bg-[#120f0e] text-white">Casamento</option>
+                      <option value="Pet" className="bg-[#120f0e] text-white">Pet</option>
+                      <option value="Família" className="bg-[#120f0e] text-white">Família</option>
+                      <option value="Gestante" className="bg-[#120f0e] text-white">Gestante</option>
+                      <option value="Casal" className="bg-[#120f0e] text-white">Casal</option>
+                      <option value="Outro" className="bg-[#120f0e] text-white">Outro</option>
+                    </select>
+                  </div>
 
-                <textarea placeholder="Mensagem&#10;Conte-me mais sobre o que você está buscando..." rows={5} className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors resize-none flex-grow" />
+                  <textarea
+                    required
+                    placeholder="Mensagem *&#10;Conte-me mais sobre o que você está buscando..."
+                    rows={5}
+                    value={formData.message}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                    className="w-full bg-transparent border border-white/10 rounded px-4 py-3 text-sm focus:outline-none focus:border-[#cba37b] transition-colors resize-none flex-grow"
+                  />
 
-                <div className="flex items-center gap-3 mt-4">
-                  <input type="checkbox" id="privacy" className="w-4 h-4 rounded border-white/20 bg-transparent text-[#cba37b] focus:ring-0" />
-                  <label htmlFor="privacy" className="text-[10px] text-white/50">
-                    Li e concordo com a <Link href="#" className="underline">Política de Privacidade</Link>.
-                  </label>
-                </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    <input
+                      type="checkbox"
+                      id="privacy"
+                      required
+                      checked={formData.privacyAccepted}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, privacyAccepted: e.target.checked }))}
+                      className="w-4 h-4 rounded border-white/20 bg-transparent text-[#cba37b] focus:ring-0 cursor-pointer"
+                    />
+                    <label htmlFor="privacy" className="text-[10px] text-white/60 cursor-pointer">
+                      Concordo em entrar em contato para atendimento personalizado via WhatsApp/E-mail.
+                    </label>
+                  </div>
 
-                <button type="submit" className="w-full bg-[#d5a77f] hover:bg-[#cba37b] text-[#120f0e] font-medium text-[10px] uppercase tracking-widest py-4 rounded transition-colors flex items-center justify-center gap-2 mt-4">
-                  ENVIAR MENSAGEM <ArrowRight size={14} />
-                </button>
-              </form>
+                  <button type="submit" className="w-full bg-[#d5a77f] hover:bg-[#cba37b] text-[#120f0e] font-medium text-[10px] uppercase tracking-widest py-4 rounded transition-colors flex items-center justify-center gap-2 mt-4 cursor-pointer">
+                    ENVIAR MENSAGEM <ArrowRight size={14} />
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
@@ -217,8 +303,16 @@ export default function ContatoPage() {
       <section className="bg-[#f0ece9] py-8 border-t border-[#e5d8cf]">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col md:flex-row items-center gap-6 md:gap-12 text-center md:text-left">
-            <div className="hidden md:block w-32 h-20 relative rounded overflow-hidden">
-               <Image src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop" alt="Câmera" fill className="object-cover" />
+            <div className="hidden md:block w-32 h-20 relative rounded overflow-hidden bg-muted">
+               {settings.contato_studio && (
+                 <Image
+                   src={settings.contato_studio}
+                   alt="Estúdio e Câmera"
+                   fill
+                   className="object-cover"
+                   style={{ objectPosition: settingsPositions.contato_studio || '50% 50%' }}
+                 />
+               )}
             </div>
             <div>
               <span className="text-[9px] uppercase tracking-widest text-[#2d2422]/50 block mb-1">PRONTA PARA COMEÇAR?</span>
@@ -227,9 +321,14 @@ export default function ContatoPage() {
               </h3>
             </div>
           </div>
-          <Link href="/contato" className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white bg-[#0f0c0b] px-8 py-3 rounded hover:bg-[#cba37b] transition-colors shrink-0">
-            SOLICITAR ORÇAMENTO <ArrowRight className="ml-3 w-4 h-4" />
-          </Link>
+          <a
+            href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white bg-[#0f0c0b] px-8 py-3 rounded hover:bg-[#cba37b] transition-colors shrink-0"
+          >
+            CHAMAR NO WHATSAPP <ArrowRight className="ml-3 w-4 h-4" />
+          </a>
         </div>
       </section>
 

@@ -13,10 +13,10 @@ interface Photo {
 }
 
 const defaultSettings = {
-  sobre_hero_bg: "https://images.unsplash.com/photo-1554048612-b6a482bc67e5?q=80&w=2000&auto=format&fit=crop",
-  sobre_image_1: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&auto=format&fit=crop",
-  sobre_image_2: "https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=1000&auto=format&fit=crop",
-  sobre_image_3: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?q=80&w=1000&auto=format&fit=crop",
+  sobre_hero_bg: "",
+  sobre_image_1: "",
+  sobre_image_2: "",
+  sobre_image_3: "",
   sobre_pets_album: "",
 };
 
@@ -75,14 +75,16 @@ export default function SobrePage() {
           <div className="flex flex-col lg:flex-row items-center gap-12 md:gap-16">
             
             {/* Foto Esquerda com Selo */}
-            <div className="w-full lg:w-1/3 relative aspect-[3/4] max-w-sm mx-auto">
-               <Image 
-                 src={settings.sobre_image_3}
-                 alt="História" 
-                 fill 
-                 className="object-cover rounded grayscale opacity-80"
-                 style={{ objectPosition: settingsPositions.sobre_image_3 || '50% 50%' }}
-               />
+            <div className="w-full lg:w-1/3 relative aspect-[3/4] max-w-sm mx-auto bg-muted rounded">
+               {settings.sobre_image_3 && (
+                 <Image 
+                   src={settings.sobre_image_3}
+                   alt="História" 
+                   fill 
+                   className="object-cover rounded grayscale opacity-80"
+                   style={{ objectPosition: settingsPositions.sobre_image_3 || '50% 50%' }}
+                 />
+               )}
                
                {/* Selo (Stamp) Simulado */}
                <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-primary/30 bg-secondary/80 backdrop-blur flex items-center justify-center flex-col text-primary rotate-[-15deg]">
@@ -140,33 +142,32 @@ export default function SobrePage() {
         </div>
 
         {/* Galeria Grid (6 imagens) */}
-        <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
-           {petPhotos.length > 0 ? (
-             petPhotos.slice(0, 6).map((photo) => (
-               <div key={photo.id} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[40vh] lg:h-[50vh]">
-                 <Image src={photo.url} alt="Pet" fill className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-               </div>
-             ))
-           ) : (
-             <>
-               {[1, 2, 3, 4, 5, 6].map((i) => (
-                 <div key={i} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[40vh] lg:h-[50vh]">
-                   <Image src="https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=800&auto=format&fit=crop" alt="Shih Tzu placeholder" fill className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                 </div>
-               ))}
-             </>
-           )}
-        </div>
+        {petPhotos.length > 0 && (
+          <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-0">
+            {petPhotos.slice(0, 6).map((photo) => (
+              <div key={photo.id} className="relative group overflow-hidden bg-muted aspect-[4/5] md:aspect-auto md:h-[40vh] lg:h-[50vh]">
+                <Image src={photo.url} alt="Pet" fill className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 3. MEUS VALORES (Claro) */}
       <section className="bg-background text-foreground py-20 relative overflow-hidden">
         {/* Textura de fundo bem suave */}
-        <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-multiply">
-           <Image src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop" alt="texture" fill className="object-cover" />
-        </div>
+        {settings.sobre_hero_bg && (
+          <div className="absolute inset-0 opacity-5 pointer-events-none mix-blend-multiply">
+             <Image
+               src={settings.sobre_hero_bg}
+               alt="texture"
+               fill
+               className="object-cover"
+               style={{ objectPosition: settingsPositions.sobre_hero_bg || '50% 50%' }}
+             />
+          </div>
+        )}
         
         <div className="container mx-auto px-6 md:px-12 flex flex-col lg:flex-row items-center gap-12">
            
@@ -207,8 +208,16 @@ export default function SobrePage() {
 
            </div>
 
-           <div className="hidden lg:block shrink-0 relative w-80 aspect-video rounded-xl overflow-hidden shadow-2xl rotate-[-2deg]">
-              <Image src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=800&auto=format&fit=crop" alt="Câmera e Fotos" fill className="object-cover" />
+           <div className="hidden lg:block shrink-0 relative w-80 aspect-video rounded-xl overflow-hidden shadow-2xl rotate-[-2deg] bg-muted">
+              {settings.sobre_image_1 && (
+                <Image
+                  src={settings.sobre_image_1}
+                  alt="Câmera e Fotos"
+                  fill
+                  className="object-cover"
+                  style={{ objectPosition: settingsPositions.sobre_image_1 || '50% 50%' }}
+                />
+              )}
            </div>
 
         </div>

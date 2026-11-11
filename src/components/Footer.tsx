@@ -58,13 +58,13 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
               Fotografia social e pet com um olhar sensível, natural e atemporal.
             </p>
             <div className="flex gap-4">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="https://instagram.com/karolinegarcia.fotografia" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
               </a>
-              <a href="https://wa.me/5511940878269" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="https://wa.me/5511940878269" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="text-muted-foreground hover:text-primary transition-colors">
                 <MessageCircle size={18} />
               </a>
-              <a href="mailto:contato@karolinegarcia.com.br" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="mailto:contato@karolinegarcia.com.br" aria-label="E-mail" className="text-muted-foreground hover:text-primary transition-colors">
                 <Mail size={18} />
               </a>
             </div>

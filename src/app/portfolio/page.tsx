@@ -221,37 +221,88 @@ function DynamicGalleryContent() {
         </header>
 
         <AnimatePresence mode="popLayout">
-          {!selectedFolder ? (
-            // Visão de Pastas
-            <motion.div 
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-24"
+          {!selectedFolder && folders.length > 0 ? (
+            // Visão de Pastas + Ensaios Gerais sem pasta
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             >
-              {folders.map((folder) => (
-                <motion.div
-                  key={folder.id}
-                  whileHover={{ scale: 1.02 }}
-                  onClick={() => setSelectedFolder(folder.slug)}
-                  className="relative aspect-square md:aspect-[4/5] rounded-xl overflow-hidden cursor-pointer group shadow-md"
-                >
-                  {folder.cover_url ? (
-                    <img src={folder.cover_url} alt={folder.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" style={{ objectPosition: folder.cover_position || 'center' }} />
-                  ) : (
-                    <div className="w-full h-full bg-black/5 flex items-center justify-center transition-transform duration-1000 group-hover:scale-105">
-                      <ImageIcon className="w-12 h-12 text-[#cba37b]/30" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-20">
+                {folders.map((folder) => (
+                  <motion.div
+                    key={folder.id}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={() => setSelectedFolder(folder.slug)}
+                    className="relative aspect-square md:aspect-[4/5] rounded-xl overflow-hidden cursor-pointer group shadow-md"
+                  >
+                    {folder.cover_url ? (
+                      <img src={folder.cover_url} alt={folder.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" style={{ objectPosition: folder.cover_position || 'center' }} />
+                    ) : (
+                      <div className="w-full h-full bg-black/5 flex items-center justify-center transition-transform duration-1000 group-hover:scale-105">
+                        <ImageIcon className="w-12 h-12 text-[#cba37b]/30" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
+                      <h3 className="text-white font-serif text-2xl mb-1">{folder.name}</h3>
+                      <div className="w-8 h-1 bg-[#cba37b] rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                    <h3 className="text-white font-serif text-2xl mb-1">{folder.name}</h3>
-                    <div className="w-8 h-1 bg-[#cba37b] rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+                  </motion.div>
+                ))}
+              </div>
+
+              {items.some((item) => !item.subcategory) && (
+                <div>
+                  <h3 className="font-serif text-2xl text-[#2d2422] mb-8 text-center">Outros Ensaios</h3>
+                  <div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4 mb-24">
+                    {items.filter((item) => !item.subcategory).map((item) => (
+                      <div
+                        key={item.id}
+                        className="relative w-full overflow-hidden group cursor-pointer break-inside-avoid bg-muted mb-4 rounded-xl shadow-sm"
+                      >
+                        <Link href={`/ensaio?id=${item.id}`} className="block relative w-full h-full">
+                          <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" style={{ objectPosition: item.cover_position || 'center' }} />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
+                            <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
+                            <h3 className="text-white font-serif text-2xl">{item.title}</h3>
+                          </div>
+                        </Link>
+                      </div>
+                    ))}
                   </div>
-                </motion.div>
-              ))}
+                </div>
+              )}
+            </motion.div>
+          ) : !selectedFolder && folders.length === 0 ? (
+            // Categoria sem subpastas: exibe todos os ensaios da categoria diretamente
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              {items.length === 0 ? (
+                <div className="mb-24 text-center py-20 rounded-xl border bg-[#f2eee9] border-[#2d2422]/10 text-[#2d2422]">
+                  <Heart size={24} className="mx-auto text-[#cba37b] mb-4" />
+                  <h3 className="font-serif text-xl mb-2">Ainda não há ensaios publicados nesta categoria.</h3>
+                  <p className="opacity-60 text-sm">Em breve teremos novas histórias aqui!</p>
+                </div>
+              ) : (
+                <div className="columns-1 sm:columns-2 md:columns-3 gap-4 space-y-4 mb-24">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="relative w-full overflow-hidden group cursor-pointer break-inside-avoid bg-muted mb-4 rounded-xl shadow-sm"
+                    >
+                      <Link href={`/ensaio?id=${item.id}`} className="block relative w-full h-full">
+                        <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" style={{ objectPosition: item.cover_position || 'center' }} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
+                          <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
+                          <h3 className="text-white font-serif text-2xl">{item.title}</h3>
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           ) : (
             // Visão de Álbum da Pasta Selecionada
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              {renderSection(selectedFolder, folders.find(f => f.slug === selectedFolder)?.name || "Portfólio")}
+              {renderSection(selectedFolder!, folders.find(f => f.slug === selectedFolder)?.name || "Portfólio")}
             </motion.div>
           )}
         </AnimatePresence>
