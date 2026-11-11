@@ -38,6 +38,7 @@ type GalleryItem = {
   subcategory?: string | null;
   sortDate: string;
   cover_position?: string | null;
+  hasVideo?: boolean;
 };
 
 function DynamicGalleryContent() {
@@ -75,9 +76,21 @@ function DynamicGalleryContent() {
         }
       }
 
-      // Fetch Albums for this category
-      const { data: albumsData } = await supabase.from("albums").select("*").eq("category", categoriaSlug);
-      
+      // Fetch Albums for this category + video summary settings
+      const [{ data: albumsData }, { data: videoSettings }] = await Promise.all([
+        supabase.from("albums").select("*").eq("category", categoriaSlug),
+        supabase
+          .from("site_settings")
+          .select("key, url")
+          .like("key", "album_video_%"),
+      ]);
+
+      const videoAlbumIds = new Set(
+        (videoSettings || [])
+          .filter((s) => !!s.url)
+          .map((s) => s.key.replace("album_video_", ""))
+      );
+
       const albumItems: GalleryItem[] = [];
       if (albumsData) {
         albumsData.forEach((a: Album) => albumItems.push({
@@ -87,7 +100,8 @@ function DynamicGalleryContent() {
           title: a.title, 
           subcategory: a.subcategory,
           sortDate: a.created_at,
-          cover_position: a.cover_position
+          cover_position: a.cover_position,
+          hasVideo: videoAlbumIds.has(a.id),
         }));
       }
 
@@ -150,7 +164,9 @@ function DynamicGalleryContent() {
                 <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.4 }} className="w-full h-full">
                   <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover" loading="lazy" style={{ objectPosition: item.cover_position || 'center' }} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                    <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
+                    <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">
+                      {item.hasVideo ? "▶ Vídeo + Fotos" : "Ver Ensaio"}
+                    </span>
                     <h3 className="text-white font-serif text-2xl">{item.title}</h3>
                   </div>
                 </motion.div>
@@ -261,7 +277,9 @@ function DynamicGalleryContent() {
                         <Link href={`/ensaio?id=${item.id}`} className="block relative w-full h-full">
                           <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" style={{ objectPosition: item.cover_position || 'center' }} />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                            <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
+                            <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">
+                      {item.hasVideo ? "▶ Vídeo + Fotos" : "Ver Ensaio"}
+                    </span>
                             <h3 className="text-white font-serif text-2xl">{item.title}</h3>
                           </div>
                         </Link>
@@ -290,7 +308,9 @@ function DynamicGalleryContent() {
                       <Link href={`/ensaio?id=${item.id}`} className="block relative w-full h-full">
                         <img src={item.url} alt={item.title || "Ensaio"} className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" style={{ objectPosition: item.cover_position || 'center' }} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-                          <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">Ver Ensaio</span>
+                          <span className="bg-[#cba37b] text-[#120f0e] text-[10px] uppercase tracking-widest px-2 py-1 rounded w-max mb-2 font-medium">
+                      {item.hasVideo ? "▶ Vídeo + Fotos" : "Ver Ensaio"}
+                    </span>
                           <h3 className="text-white font-serif text-2xl">{item.title}</h3>
                         </div>
                       </Link>

@@ -31,6 +31,8 @@ import {
   X,
   Sparkles,
   Camera,
+  Film,
+  Play,
 } from "lucide-react";
 import {
   DndContext,
@@ -353,6 +355,9 @@ export default function AdminDashboard() {
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [albumFile, setAlbumFile] = useState<File | null>(null);
   const [albumCoverFromExistingUrl, setAlbumCoverFromExistingUrl] = useState<string>("");
+  const [albumVideoFile, setAlbumVideoFile] = useState<File | null>(null);
+  const [albumVideoUrlInput, setAlbumVideoUrlInput] = useState<string>("");
+  const [uploadingAlbumVideo, setUploadingAlbumVideo] = useState(false);
   const [albumCategory, setAlbumCategory] = useState<string>("");
   const [albumSubcategory, setAlbumSubcategory] = useState<string>("");
   const [albumTitle, setAlbumTitle] = useState("");
@@ -718,6 +723,25 @@ export default function AdminDashboard() {
         publicCoverUrl = publicUrl;
       }
 
+      let finalVideoUrl: string | undefined = undefined;
+      if (albumVideoFile) {
+        const vExt = albumVideoFile.name.split(".").pop();
+        const vName = `video-${Math.random().toString(36).substring(2)}-${Date.now()}.${vExt}`;
+        const vPath = `videos/${albumCategory}/${vName}`;
+
+        const { error: vUpErr } = await supabase.storage
+          .from("fotos")
+          .upload(vPath, albumVideoFile);
+        if (vUpErr) throw vUpErr;
+
+        const {
+          data: { publicUrl: vPubUrl },
+        } = supabase.storage.from("fotos").getPublicUrl(vPath);
+        finalVideoUrl = vPubUrl;
+      } else if (albumVideoUrlInput.trim()) {
+        finalVideoUrl = albumVideoUrlInput.trim();
+      }
+
       if (editingAlbumId) {
         const updatePayload: Record<string, any> = {
           title: albumTitle,
@@ -732,6 +756,10 @@ export default function AdminDashboard() {
           .update(updatePayload)
           .eq("id", editingAlbumId);
         if (dbError) throw dbError;
+
+        if (finalVideoUrl !== undefined) {
+          await upsertAlbumVideoSetting(editingAlbumId, albumTitle, finalVideoUrl);
+        }
 
         showToast("Ensaio atualizado com sucesso!");
       } else {
@@ -749,6 +777,10 @@ export default function AdminDashboard() {
           .select()
           .single();
         if (dbError) throw dbError;
+
+        if (inserted && finalVideoUrl) {
+          await upsertAlbumVideoSetting(inserted.id, albumTitle, finalVideoUrl);
+        }
 
         showToast(
           publicCoverUrl
@@ -791,6 +823,88 @@ export default function AdminDashboard() {
     }
   };
 
+  const upsertAlbumVideoSetting = async (
+    albumId: string,
+    title: string,
+    videoUrl: string
+  ) => {
+    const key = `album_video_${albumId}`;
+    const existing = settings.find((s) => s.key === key);
+    if (existing) {
+      await supabase
+        .from("site_settings")
+        .update({ url: videoUrl, title: `Vídeo Resumo - ${title}` })
+        .eq("key", key);
+    } else {
+      await supabase.from("site_settings").insert([
+        {
+          key,
+          title: `Vídeo Resumo - ${title}`,
+          section: "Vídeo Resumo do Ensaio",
+          url: videoUrl,
+        },
+      ]);
+    }
+  };
+
+  const handleSaveOpenedAlbumVideo = async (
+    e: React.FormEvent,
+    album: Album
+  ) => {
+    e.preventDefault();
+    if (!albumVideoFile && !albumVideoUrlInput.trim()) return;
+
+    setUploadingAlbumVideo(true);
+    try {
+      let finalVideoUrl = albumVideoUrlInput.trim();
+      if (albumVideoFile) {
+        const vExt = albumVideoFile.name.split(".").pop();
+        const vName = `video-${Math.random().toString(36).substring(2)}-${Date.now()}.${vExt}`;
+        const vPath = `videos/${album.category}/${vName}`;
+
+        const { error: vUpErr } = await supabase.storage
+          .from("fotos")
+          .upload(vPath, albumVideoFile);
+        if (vUpErr) throw vUpErr;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("fotos").getPublicUrl(vPath);
+        finalVideoUrl = publicUrl;
+      }
+
+      await upsertAlbumVideoSetting(album.id, album.title, finalVideoUrl);
+      setAlbumVideoFile(null);
+      setAlbumVideoUrlInput("");
+      const { data } = await supabase.from("site_settings").select("*");
+      if (data) setSettings(data);
+      showToast("Vídeo resumo adicionado ao ensaio com sucesso!");
+    } catch (err: any) {
+      showToast("Erro ao salvar vídeo resumo: " + err.message, "error");
+    } finally {
+      setUploadingAlbumVideo(false);
+    }
+  };
+
+  const handleRemoveAlbumVideo = async (albumId: string) => {
+    if (!window.confirm("Remover o vídeo resumo deste ensaio?")) return;
+    try {
+      const key = `album_video_${albumId}`;
+      const existing = settings.find((s) => s.key === key);
+      if (existing) {
+        const urlParts = existing.url.split("/fotos/");
+        if (urlParts.length > 1) {
+          await supabase.storage.from("fotos").remove([urlParts[1]]);
+        }
+        await supabase.from("site_settings").delete().eq("key", key);
+        setSettings((prev) => prev.filter((s) => s.key !== key));
+      }
+      showToast("Vídeo resumo removido do ensaio.");
+    } catch (err: any) {
+      showToast("Erro ao remover vídeo: " + err.message, "error");
+    }
+  };
+
   const startEditAlbum = (album: Album) => {
     setEditingAlbumId(album.id);
     setAlbumTitle(album.title);
@@ -799,6 +913,10 @@ export default function AdminDashboard() {
     setAlbumCoverPosition(album.cover_position || "50% 50%");
     setAlbumFile(null);
     setAlbumCoverFromExistingUrl("");
+    setAlbumVideoFile(null);
+    const existingVid =
+      settings.find((s) => s.key === `album_video_${album.id}`)?.url || "";
+    setAlbumVideoUrlInput(existingVid);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -806,6 +924,8 @@ export default function AdminDashboard() {
     setEditingAlbumId(null);
     setAlbumFile(null);
     setAlbumCoverFromExistingUrl("");
+    setAlbumVideoFile(null);
+    setAlbumVideoUrlInput("");
     setAlbumTitle("");
     setAlbumCoverPosition("50% 50%");
   };
@@ -963,6 +1083,17 @@ export default function AdminDashboard() {
         await supabase.from("photos").delete().eq("album_id", album.id);
       }
 
+      // Remove video summary of this album if any
+      const videoKey = `album_video_${album.id}`;
+      const videoSetting = settings.find((s) => s.key === videoKey);
+      if (videoSetting) {
+        const vParts = videoSetting.url.split("/fotos/");
+        if (vParts.length > 1) {
+          await supabase.storage.from("fotos").remove([vParts[1]]);
+        }
+        await supabase.from("site_settings").delete().eq("key", videoKey);
+      }
+
       await supabase.from("albums").delete().eq("id", album.id);
       const urlParts = album.cover_url.split("/fotos/");
       if (urlParts.length > 1) {
@@ -1008,11 +1139,28 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filtrar apenas configurações que são realmente imagens (excluindo chaves que guardam ID de álbum)
+  // Filtrar apenas configurações que são realmente imagens (excluindo chaves que guardam ID de álbum ou vídeo de ensaio)
   const imageSettings = useMemo(
-    () => settings.filter((s) => !ALBUM_LINK_SETTING_KEYS.has(s.key)),
+    () =>
+      settings.filter(
+        (s) =>
+          !ALBUM_LINK_SETTING_KEYS.has(s.key) &&
+          !s.key.startsWith("album_video_")
+      ),
     [settings]
   );
+
+  // Mapa de albumId -> URL do Vídeo Resumo
+  const albumVideoById = useMemo(() => {
+    const map: Record<string, string> = {};
+    settings.forEach((s) => {
+      if (s.key.startsWith("album_video_") && s.url) {
+        const aId = s.key.replace("album_video_", "");
+        map[aId] = s.url;
+      }
+    });
+    return map;
+  }, [settings]);
 
   const groupedSettings = useMemo(() => {
     return imageSettings.reduce((acc, curr) => {
@@ -1413,6 +1561,46 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
+                  {/* Campo Opcional de Vídeo Resumo (Especial Debutantes / Eventos) */}
+                  <div className="pt-2 border-t border-[#2d2422]/10">
+                    <label className="block text-xs font-medium text-[#2d2422]/90 mb-1 flex items-center gap-1.5">
+                      <Film className="w-3.5 h-3.5 text-[#cba37b]" />
+                      Vídeo Resumo do Ensaio (Debutantes / Eventos)
+                    </label>
+                    <p className="text-[11px] text-[#2d2422]/55 mb-2">
+                      Opcional — envie um vídeo curto (.mp4/.mov) ou cole um link do YouTube/Vimeo.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="border border-dashed border-[#2d2422]/20 rounded-xl p-3 text-center hover:border-[#cba37b] transition-all cursor-pointer relative bg-[#f4ede8]/30">
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={(e) => {
+                            setAlbumVideoFile(e.target.files?.[0] || null);
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        {albumVideoFile ? (
+                          <div className="text-[#cba37b] font-medium text-xs truncate px-2">
+                            🎬 {albumVideoFile.name}
+                          </div>
+                        ) : (
+                          <div className="text-[#2d2422]/60 text-[11px] flex items-center justify-center gap-1.5">
+                            <Film className="w-4 h-4 text-[#cba37b]" />
+                            <span>Enviar arquivo de vídeo do computador</span>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="url"
+                        value={albumVideoUrlInput}
+                        onChange={(e) => setAlbumVideoUrlInput(e.target.value)}
+                        placeholder="Ou cole o link do vídeo (YouTube, Vimeo ou MP4)..."
+                        className="w-full px-3.5 py-2.5 bg-[#f4ede8]/70 border border-[#2d2422]/15 rounded-lg focus:bg-white focus:border-[#cba37b] outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={uploadingAlbum || !albumTitle}
@@ -1516,9 +1704,19 @@ export default function AdminDashboard() {
                               </span>
                             </div>
 
-                            <div className="absolute top-3 right-3 bg-black/65 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-white/15">
-                              <Camera className="w-3.5 h-3.5 text-[#cba37b]" />
-                              {count} {count === 1 ? "foto" : "fotos"}
+                            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                              {albumVideoById[album.id] && (
+                                <span
+                                  className="bg-[#cba37b] text-[#120f0e] text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow"
+                                  title="Este ensaio possui Vídeo Resumo"
+                                >
+                                  <Film className="w-3 h-3" /> Vídeo
+                                </span>
+                              )}
+                              <div className="bg-black/65 backdrop-blur-sm text-white text-[11px] px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-white/15">
+                                <Camera className="w-3.5 h-3.5 text-[#cba37b]" />
+                                {count} {count === 1 ? "foto" : "fotos"}
+                              </div>
                             </div>
 
                             <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
@@ -1657,9 +1855,9 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Upload direto para este ensaio */}
-              <div className="lg:col-span-1">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#2d2422]/10 sticky top-36">
+              {/* Upload direto para este ensaio + Vídeo Resumo */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#2d2422]/10">
                   <h3 className="font-serif text-xl mb-2 flex items-center gap-2">
                     <Upload className="w-5 h-5 text-[#cba37b]" /> Adicionar Fotos ao Ensaio
                   </h3>
@@ -1743,6 +1941,121 @@ export default function AdminDashboard() {
                         `Enviar ${
                           photoFiles.length > 0 ? `${photoFiles.length} ` : ""
                         }Foto(s) para o Ensaio`
+                      )}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Card de Vídeo Resumo do Ensaio (Especial Debutantes / Eventos) */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#cba37b]/35">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-serif text-xl flex items-center gap-2">
+                      <Film className="w-5 h-5 text-[#cba37b]" /> Vídeo Resumo do Ensaio
+                    </h3>
+                    {albumVideoById[openedAlbum.id] && (
+                      <span className="bg-[#cba37b]/20 text-[#2d2422] text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                        Ativo
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#2d2422]/60 mb-4">
+                    Ideal para ensaios de <strong>Debutantes</strong> e eventos! O vídeo aparece em destaque no topo da página do ensaio junto com as fotos.
+                  </p>
+
+                  {albumVideoById[openedAlbum.id] && (
+                    <div className="mb-4 rounded-xl overflow-hidden bg-[#120f0e] border border-[#2d2422]/15">
+                      {albumVideoById[openedAlbum.id].includes("youtube.com") ||
+                      albumVideoById[openedAlbum.id].includes("youtu.be") ||
+                      albumVideoById[openedAlbum.id].includes("vimeo.com") ? (
+                        <div className="p-4 text-xs text-white/80 flex items-center justify-between gap-2">
+                          <span className="truncate">
+                            🔗 {albumVideoById[openedAlbum.id]}
+                          </span>
+                          <a
+                            href={albumVideoById[openedAlbum.id]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#cba37b] underline shrink-0"
+                          >
+                            Abrir
+                          </a>
+                        </div>
+                      ) : (
+                        <video
+                          src={albumVideoById[openedAlbum.id]}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full max-h-56 object-contain bg-black"
+                        />
+                      )}
+                      <div className="p-2.5 bg-[#1a1715] flex items-center justify-between">
+                        <span className="text-[11px] text-white/70">
+                          Vídeo resumo publicado neste ensaio
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAlbumVideo(openedAlbum.id)}
+                          className="text-[11px] text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remover vídeo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={(e) => handleSaveOpenedAlbumVideo(e, openedAlbum)}
+                    className="space-y-3"
+                  >
+                    <div className="border-2 border-dashed border-[#cba37b]/40 rounded-xl p-4 text-center hover:bg-[#fcfaf8] transition-colors cursor-pointer relative bg-[#f4ede8]/40">
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) =>
+                          setAlbumVideoFile(e.target.files?.[0] || null)
+                        }
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      {albumVideoFile ? (
+                        <div className="text-[#2d2422] font-medium text-xs truncate">
+                          🎬 {albumVideoFile.name}
+                        </div>
+                      ) : (
+                        <div className="text-[#2d2422]/60 text-xs flex flex-col items-center py-1">
+                          <Film className="w-5 h-5 mb-1 text-[#cba37b]" />
+                          <span className="font-medium text-[#2d2422]">
+                            Enviar arquivo de vídeo (.mp4, .mov)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <input
+                      type="url"
+                      value={albumVideoUrlInput}
+                      onChange={(e) => setAlbumVideoUrlInput(e.target.value)}
+                      placeholder="Ou cole o link do vídeo (YouTube, Vimeo ou MP4)..."
+                      className="w-full px-3.5 py-2.5 bg-[#f4ede8]/70 border border-[#2d2422]/15 rounded-lg focus:bg-white focus:border-[#cba37b] outline-none text-xs"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={
+                        uploadingAlbumVideo ||
+                        (!albumVideoFile && !albumVideoUrlInput.trim())
+                      }
+                      className="w-full bg-[#120f0e] text-white py-3 rounded-xl font-medium uppercase tracking-widest text-xs hover:bg-[#cba37b] hover:text-[#120f0e] transition-colors flex items-center justify-center disabled:opacity-50 cursor-pointer"
+                    >
+                      {uploadingAlbumVideo ? (
+                        <span className="flex items-center">
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Salvando Vídeo...
+                        </span>
+                      ) : albumVideoById[openedAlbum.id] ? (
+                        "Substituir Vídeo Resumo"
+                      ) : (
+                        "Salvar Vídeo Resumo no Ensaio"
                       )}
                     </button>
                   </form>

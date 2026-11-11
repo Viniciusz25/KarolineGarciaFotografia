@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Loader2, X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import { ArrowLeft, Loader2, X, ChevronLeft, ChevronRight, Maximize2, Film, Play } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import clsx from "clsx";
 
@@ -12,8 +12,10 @@ type Album = {
   id: string;
   title: string;
   category: string;
+  subcategory?: string | null;
   cover_url: string;
   cover_position?: string | null;
+  video_url?: string | null;
   created_at: string;
 };
 
@@ -24,6 +26,29 @@ type Photo = {
   created_at: string;
 };
 
+function getEmbedVideoUrl(url: string): { type: "iframe" | "video"; src: string } {
+  const trimmed = url.trim();
+  // YouTube watch / youtu.be / shorts
+  const ytMatch = trimmed.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  if (ytMatch?.[1]) {
+    return {
+      type: "iframe",
+      src: `https://www.youtube.com/embed/${ytMatch[1]}?rel=0`,
+    };
+  }
+  // Vimeo
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch?.[1]) {
+    return {
+      type: "iframe",
+      src: `https://player.vimeo.com/video/${vimeoMatch[1]}`,
+    };
+  }
+  return { type: "video", src: trimmed };
+}
+
 function EnsaioContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -31,6 +56,7 @@ function EnsaioContent() {
 
   const [album, setAlbum] = useState<Album | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const touchStartX = useRef<number | null>(null);
@@ -42,28 +68,33 @@ function EnsaioContent() {
     }
 
     const fetchAlbumData = async () => {
-      // 1. Fetch Album Details
-      const { data: albumData, error: albumError } = await supabase
-        .from("albums")
-        .select("*")
-        .eq("id", id)
-        .single();
+      // 1. Fetch Album Details, Photos, and Video Summary Setting in parallel
+      const [albumRes, photosRes, videoSettingRes] = await Promise.all([
+        supabase.from("albums").select("*").eq("id", id).single(),
+        supabase
+          .from("photos")
+          .select("*")
+          .eq("album_id", id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("site_settings")
+          .select("url")
+          .eq("key", `album_video_${id}`)
+          .maybeSingle(),
+      ]);
 
-      if (albumError || !albumData) {
+      if (albumRes.error || !albumRes.data) {
         setLoading(false);
         return;
       }
-      setAlbum(albumData);
+      setAlbum(albumRes.data);
 
-      // 2. Fetch Photos for this Album
-      const { data: photosData } = await supabase
-        .from("photos")
-        .select("*")
-        .eq("album_id", id)
-        .order("created_at", { ascending: false });
+      if (photosRes.data) setPhotos(photosRes.data);
 
-      if (photosData) setPhotos(photosData);
-      
+      const resolvedVideo =
+        videoSettingRes.data?.url || albumRes.data.video_url || null;
+      if (resolvedVideo) setVideoUrl(resolvedVideo);
+
       setLoading(false);
     };
 
@@ -161,10 +192,20 @@ function EnsaioContent() {
             >
               <span className="text-primary/90 text-sm md:text-base uppercase tracking-[0.3em] font-medium block mb-4">
                 Ensaio {album.category}
+                {album.subcategory ? ` · ${album.subcategory}` : ""}
               </span>
               <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl text-white mb-6">
                 {album.title}
               </h1>
+              {videoUrl && (
+                <a
+                  href="#video-resumo"
+                  className="inline-flex items-center gap-2.5 bg-[#cba37b] text-[#120f0e] px-6 py-3 rounded-full text-xs uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all shadow-lg mt-2"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  Assistir Vídeo Resumo
+                </a>
+              )}
             </motion.div>
           </div>
 
@@ -177,8 +218,64 @@ function EnsaioContent() {
           </Link>
         </section>
 
-        {/* Gallery */}
+        {/* Gallery + Video Summary */}
         <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-16 md:py-24">
+          {/* Seção de Vídeo Resumo do Ensaio (Especial Debutantes & Eventos) */}
+          {videoUrl && (() => {
+            const parsedVideo = getEmbedVideoUrl(videoUrl);
+            return (
+              <motion.section
+                id="video-resumo"
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7 }}
+                className="mb-20"
+              >
+                <div className="bg-[#120f0e] text-[#f4ede8] rounded-2xl p-6 md:p-10 lg:p-12 border border-[#cba37b]/25 shadow-xl">
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                    <div>
+                      <span className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.35em] text-[#cba37b] mb-2">
+                        <Film className="w-3.5 h-3.5" /> Filme do Ensaio
+                      </span>
+                      <h2 className="font-serif text-2xl md:text-4xl text-white font-light">
+                        Vídeo Resumo —{" "}
+                        <span className="italic text-[#cba37b]">
+                          {album.title}
+                        </span>
+                      </h2>
+                    </div>
+                    <p className="text-xs text-white/60 font-light max-w-sm">
+                      Dê o play para sentir a atmosfera e os bastidores deste momento especial antes de conferir a galeria completa de fotos abaixo.
+                    </p>
+                  </div>
+
+                  <div className="relative w-full rounded-xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
+                    {parsedVideo.type === "iframe" ? (
+                      <div className="w-full aspect-video">
+                        <iframe
+                          src={parsedVideo.src}
+                          title={`Vídeo Resumo - ${album.title}`}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <video
+                        src={parsedVideo.src}
+                        poster={album.cover_url || undefined}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full max-h-[75vh] object-contain bg-black"
+                      />
+                    )}
+                  </div>
+                </div>
+              </motion.section>
+            );
+          })()}
           {photos.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground">
               <p>Nenhuma foto foi adicionada a este ensaio ainda.</p>
