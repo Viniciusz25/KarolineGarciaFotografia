@@ -352,6 +352,7 @@ export default function AdminDashboard() {
   const [uploadingAlbum, setUploadingAlbum] = useState(false);
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [albumFile, setAlbumFile] = useState<File | null>(null);
+  const [albumCoverFromExistingUrl, setAlbumCoverFromExistingUrl] = useState<string>("");
   const [albumCategory, setAlbumCategory] = useState<string>("");
   const [albumSubcategory, setAlbumSubcategory] = useState<string>("");
   const [albumTitle, setAlbumTitle] = useState("");
@@ -696,14 +697,10 @@ export default function AdminDashboard() {
   const handleSaveAlbum = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!albumTitle) return;
-    if (!editingAlbumId && !albumFile) {
-      showToast("Selecione uma foto de capa para o ensaio.", "error");
-      return;
-    }
 
     setUploadingAlbum(true);
     try {
-      let publicCoverUrl: string | undefined = undefined;
+      let publicCoverUrl: string | undefined = albumCoverFromExistingUrl || undefined;
 
       if (albumFile) {
         const fileExt = albumFile.name.split(".").pop();
@@ -744,7 +741,7 @@ export default function AdminDashboard() {
             {
               title: albumTitle,
               category: albumCategory,
-              cover_url: publicCoverUrl,
+              cover_url: publicCoverUrl || "",
               subcategory: albumSubcategory || null,
               cover_position: albumCoverPosition,
             },
@@ -753,7 +750,11 @@ export default function AdminDashboard() {
           .single();
         if (dbError) throw dbError;
 
-        showToast("Ensaio criado! Agora você pode enviar as fotos dele.");
+        showToast(
+          publicCoverUrl
+            ? "Ensaio criado! Agora você pode enviar as fotos dele."
+            : "Ensaio criado! Envie as fotos e escolha qualquer uma delas como capa."
+        );
         if (inserted) {
           setOpenedAlbumId(inserted.id);
           setSelectedAlbumId(inserted.id);
@@ -769,6 +770,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSetPhotoAsAlbumCover = async (albumId: string, photoUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from("albums")
+        .update({ cover_url: photoUrl, cover_position: "50% 50%" })
+        .eq("id", albumId);
+      if (error) throw error;
+
+      setAlbums((prev) =>
+        prev.map((a) =>
+          a.id === albumId
+            ? { ...a, cover_url: photoUrl, cover_position: "50% 50%" }
+            : a
+        )
+      );
+      showToast("Foto definida como capa do ensaio!");
+    } catch (err: any) {
+      showToast("Erro ao definir capa: " + err.message, "error");
+    }
+  };
+
   const startEditAlbum = (album: Album) => {
     setEditingAlbumId(album.id);
     setAlbumTitle(album.title);
@@ -776,12 +798,14 @@ export default function AdminDashboard() {
     setAlbumSubcategory(album.subcategory || "");
     setAlbumCoverPosition(album.cover_position || "50% 50%");
     setAlbumFile(null);
+    setAlbumCoverFromExistingUrl("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const cancelEditAlbum = () => {
     setEditingAlbumId(null);
     setAlbumFile(null);
+    setAlbumCoverFromExistingUrl("");
     setAlbumTitle("");
     setAlbumCoverPosition("50% 50%");
   };
@@ -805,6 +829,7 @@ export default function AdminDashboard() {
       }
 
       let successCount = 0;
+      let firstUploadedUrl = "";
       setUploadProgress({ current: 0, total: photoFiles.length });
 
       for (let i = 0; i < photoFiles.length; i++) {
@@ -822,6 +847,8 @@ export default function AdminDashboard() {
           data: { publicUrl },
         } = supabase.storage.from("fotos").getPublicUrl(filePath);
 
+        if (!firstUploadedUrl) firstUploadedUrl = publicUrl;
+
         const { error: dbError } = await supabase.from("photos").insert([
           {
             url: publicUrl,
@@ -834,6 +861,17 @@ export default function AdminDashboard() {
 
         successCount++;
         setUploadProgress({ current: successCount, total: photoFiles.length });
+      }
+
+      // Se o ensaio ainda não tinha foto de capa, usa automaticamente a primeira foto enviada
+      if (targetAlbumId !== "" && firstUploadedUrl) {
+        const targetAlbum = albums.find((a) => a.id === targetAlbumId);
+        if (targetAlbum && !targetAlbum.cover_url) {
+          await supabase
+            .from("albums")
+            .update({ cover_url: firstUploadedUrl })
+            .eq("id", targetAlbumId);
+        }
       }
 
       setPhotoFiles([]);
@@ -855,8 +893,9 @@ export default function AdminDashboard() {
     if (!window.confirm("Deseja realmente excluir esta foto?")) return;
     try {
       await supabase.from("photos").delete().eq("id", photo.id);
+      const usedAsAlbumCover = albums.some((a) => a.cover_url === photo.url);
       const urlParts = photo.url.split("/fotos/");
-      if (urlParts.length > 1) {
+      if (urlParts.length > 1 && !usedAsAlbumCover) {
         await supabase.storage.from("fotos").remove([urlParts[1]]);
       }
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
@@ -878,7 +917,9 @@ export default function AdminDashboard() {
       setLoading(true);
       const photosToDelete = photos.filter((p) => selectedPhotos.includes(p.id));
       await supabase.from("photos").delete().in("id", selectedPhotos);
+      const albumCoverUrls = new Set(albums.map((a) => a.cover_url));
       const pathsToDelete = photosToDelete
+        .filter((p) => !albumCoverUrls.has(p.url))
         .map((p) => p.url.split("/fotos/")[1])
         .filter((path) => !!path);
 
@@ -1265,32 +1306,93 @@ export default function AdminDashboard() {
 
                   <div>
                     <label className="block text-xs font-medium text-[#2d2422]/80 mb-1.5">
-                      Foto de Capa {editingAlbumId ? "(Opcional para trocar)" : "*"}
+                      Foto de Capa (Opcional — ou escolha das fotos do ensaio)
                     </label>
                     <div className="border-2 border-dashed border-[#2d2422]/20 rounded-xl p-5 text-center hover:border-[#cba37b] hover:bg-[#fcfaf8] transition-all cursor-pointer relative bg-[#f4ede8]/40">
                       <input
                         type="file"
                         accept="image/*"
-                        required={!editingAlbumId}
-                        onChange={(e) =>
-                          setAlbumFile(e.target.files?.[0] || null)
-                        }
+                        onChange={(e) => {
+                          setAlbumFile(e.target.files?.[0] || null);
+                          setAlbumCoverFromExistingUrl("");
+                        }}
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
                       {albumFile ? (
                         <div className="text-[#cba37b] font-medium text-sm truncate px-2">
                           ✓ {albumFile.name}
                         </div>
+                      ) : albumCoverFromExistingUrl ? (
+                        <div className="text-[#cba37b] font-medium text-xs px-2">
+                          ✓ Foto do próprio ensaio selecionada como capa
+                        </div>
                       ) : (
                         <div className="text-[#2d2422]/60 text-xs flex flex-col items-center">
                           <ImageIcon className="w-6 h-6 mb-1.5 text-[#cba37b]" />
-                          Clique ou arraste a foto de capa
+                          <span>Enviar foto de capa do computador</span>
+                          <span className="text-[10px] text-[#2d2422]/45 mt-0.5">
+                            Ou escolha qualquer foto dentro do ensaio depois
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {(albumFile || editingAlbumId) && (
+                  {/* Seletor rápido de fotos do próprio ensaio ao editar */}
+                  {editingAlbumId &&
+                    photos.some((p) => p.album_id === editingAlbumId) && (
+                      <div>
+                        <label className="block text-xs font-medium text-[#2d2422]/80 mb-1.5">
+                          Ou escolher uma foto deste ensaio como capa:
+                        </label>
+                        <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-2 bg-[#f4ede8]/60 rounded-xl border border-[#2d2422]/10">
+                          {photos
+                            .filter((p) => p.album_id === editingAlbumId)
+                            .map((p) => {
+                              const currentPreviewUrl =
+                                albumCoverFromExistingUrl ||
+                                albums.find((a) => a.id === editingAlbumId)
+                                  ?.cover_url;
+                              const isPicked =
+                                !albumFile && currentPreviewUrl === p.url;
+                              return (
+                                <button
+                                  type="button"
+                                  key={p.id}
+                                  onClick={() => {
+                                    setAlbumFile(null);
+                                    setAlbumCoverFromExistingUrl(p.url);
+                                  }}
+                                  className={clsx(
+                                    "relative aspect-square rounded-lg overflow-hidden border-2 transition-all cursor-pointer",
+                                    isPicked
+                                      ? "border-[#cba37b] ring-2 ring-[#cba37b]/40 scale-95"
+                                      : "border-transparent opacity-75 hover:opacity-100"
+                                  )}
+                                  title="Usar esta foto como capa"
+                                >
+                                  <img
+                                    src={p.url}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {isPicked && (
+                                    <span className="absolute inset-0 bg-[#cba37b]/30 flex items-center justify-center text-[10px] font-bold text-[#120f0e]">
+                                      ★
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+
+                  {(albumFile ||
+                    albumCoverFromExistingUrl ||
+                    (editingAlbumId &&
+                      albums.find((a) => a.id === editingAlbumId)
+                        ?.cover_url)) && (
                     <div>
                       <label className="block text-xs font-medium text-[#2d2422]/80 mb-1.5">
                         Enquadramento da Capa
@@ -1299,8 +1401,10 @@ export default function AdminDashboard() {
                         imageUrl={
                           albumFile
                             ? URL.createObjectURL(albumFile)
-                            : albums.find((a) => a.id === editingAlbumId)
-                                ?.cover_url || ""
+                            : albumCoverFromExistingUrl ||
+                              albums.find((a) => a.id === editingAlbumId)
+                                ?.cover_url ||
+                              ""
                         }
                         value={albumCoverPosition}
                         onChange={setAlbumCoverPosition}
@@ -1311,11 +1415,7 @@ export default function AdminDashboard() {
 
                   <button
                     type="submit"
-                    disabled={
-                      uploadingAlbum ||
-                      !albumTitle ||
-                      (!editingAlbumId && !albumFile)
-                    }
+                    disabled={uploadingAlbum || !albumTitle}
                     className="w-full bg-[#120f0e] text-white py-3.5 rounded-xl font-medium uppercase tracking-widest text-xs hover:bg-[#cba37b] hover:text-[#120f0e] transition-colors flex items-center justify-center disabled:opacity-50 mt-4 cursor-pointer shadow-sm"
                   >
                     {uploadingAlbum ? (
@@ -1714,6 +1814,8 @@ export default function AdminDashboard() {
                               const isSelected = selectedPhotos.includes(
                                 photo.id
                               );
+                              const isCurrentCover =
+                                openedAlbum.cover_url === photo.url;
                               return (
                                 <div
                                   key={photo.id}
@@ -1722,6 +1824,8 @@ export default function AdminDashboard() {
                                     "group relative aspect-square rounded-xl overflow-hidden bg-muted cursor-pointer border-2 transition-all",
                                     isSelected
                                       ? "border-[#cba37b] scale-[0.97]"
+                                      : isCurrentCover
+                                      ? "border-[#cba37b]/70"
                                       : "border-transparent"
                                   )}
                                 >
@@ -1740,13 +1844,35 @@ export default function AdminDashboard() {
                                   >
                                     {isSelected && "✓"}
                                   </div>
+
+                                  {isCurrentCover ? (
+                                    <span className="absolute bottom-2.5 left-2.5 bg-[#cba37b] text-[#120f0e] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md z-20">
+                                      ★ Capa Atual
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSetPhotoAsAlbumCover(
+                                          openedAlbum.id,
+                                          photo.url
+                                        );
+                                      }}
+                                      className="absolute bottom-2.5 left-2.5 bg-[#120f0e]/90 hover:bg-[#cba37b] text-white hover:text-[#120f0e] text-[10px] font-medium px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-md cursor-pointer z-20"
+                                      title="Definir esta foto como capa do ensaio"
+                                    >
+                                      ★ Usar como Capa
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleDeletePhoto(photo);
                                     }}
-                                    className="absolute bottom-2.5 right-2.5 bg-red-600/90 hover:bg-red-600 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-md cursor-pointer"
+                                    className="absolute bottom-2.5 right-2.5 bg-red-600/90 hover:bg-red-600 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-md cursor-pointer z-20"
                                     title="Excluir esta foto"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -2035,17 +2161,35 @@ export default function AdminDashboard() {
                                   </p>
                                 )}
                               </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePhoto(photo);
-                                }}
-                                className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors shadow-lg shrink-0 cursor-pointer"
-                                title="Excluir foto"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {photo.album_id && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSetPhotoAsAlbumCover(
+                                        photo.album_id!,
+                                        photo.url
+                                      );
+                                    }}
+                                    className="bg-[#cba37b] hover:bg-white text-[#120f0e] text-[10px] font-semibold px-2.5 py-2 rounded-lg transition-colors shadow-lg cursor-pointer"
+                                    title="Usar esta foto como capa do ensaio"
+                                  >
+                                    ★ Capa
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeletePhoto(photo);
+                                  }}
+                                  className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors shadow-lg shrink-0 cursor-pointer"
+                                  title="Excluir foto"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </motion.div>
