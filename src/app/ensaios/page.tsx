@@ -17,6 +17,7 @@ type Category = {
   theme: "dark" | "light";
   cover_url: string | null;
   is_hidden?: boolean;
+  order_index?: number | null;
   created_at: string;
   cover_position?: string | null;
 };
@@ -44,7 +45,15 @@ export default function EnsaiosPage() {
     );
   }
 
-  const rootCategories = categories.filter(c => !c.parent_id && !c.is_hidden);
+  const rootCategories = categories
+    .filter(c => !c.parent_id && !c.is_hidden)
+    .sort((a, b) => {
+      const aIsSocial = a.slug.toLowerCase().includes("social") || a.name.toLowerCase().includes("social");
+      const bIsSocial = b.slug.toLowerCase().includes("social") || b.name.toLowerCase().includes("social");
+      if (aIsSocial && !bIsSocial) return -1;
+      if (!aIsSocial && bIsSocial) return 1;
+      return (a.order_index ?? 999) - (b.order_index ?? 999);
+    });
 
   return (
     <div className="w-full flex flex-col">

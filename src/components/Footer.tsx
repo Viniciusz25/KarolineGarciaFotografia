@@ -36,7 +36,16 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
     return null;
   }
 
-  const rootCategories = categories.filter(c => !c.parent_id && !c.is_hidden).slice(0, 2); // Pega até as 2 primeiras pra não quebrar o layout do footer
+  const rootCategories = categories
+    .filter(c => !c.parent_id && !c.is_hidden)
+    .sort((a, b) => {
+      const aIsSocial = a.slug.toLowerCase().includes("social") || a.name.toLowerCase().includes("social");
+      const bIsSocial = b.slug.toLowerCase().includes("social") || b.name.toLowerCase().includes("social");
+      if (aIsSocial && !bIsSocial) return -1;
+      if (!aIsSocial && bIsSocial) return 1;
+      return 0;
+    })
+    .slice(0, 2); // Pega até as 2 primeiras pra não quebrar o layout do footer
 
   return (
     <footer className="relative bg-background text-foreground pt-20 pb-8 border-t border-accent">
