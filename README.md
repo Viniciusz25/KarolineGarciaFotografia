@@ -38,7 +38,31 @@ Chega de depender de programador para trocar as imagens estáticas do site!
 
 ---
 
-## 🚀 Como Hospedar (Deploy na HostGator)
+## ☁️ Como Hospedar no Cloudflare Pages (Recomendado — Gratuito e Automático)
+
+O projeto já está 100% configurado para o **Cloudflare Pages** (com `.node-version`, `wrangler.jsonc`, `public/_headers` e `output: "export"` no `next.config.ts`).
+
+### Opção 1: Deploy Automático pelo GitHub (CI/CD)
+1. Acesse o [Painel da Cloudflare](https://dash.cloudflare.com/) e vá em **Workers & Pages** > **Create** > aba **Pages** > **Connect to Git**.
+2. Selecione o repositório **`Viniciusz25/KarolineGarciaFotografia`** (branch `main`).
+3. Em **Build settings**, preencha:
+   - **Framework preset**: `Next.js (Static HTML Export)` (ou `None`)
+   - **Build command**: `npm run build`
+   - **Build output directory**: `out`
+4. Em **Environment variables**, adicione as duas variáveis públicas do Supabase:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+5. Clique em **Save and Deploy**. A cada novo `git push` na branch `main`, a Cloudflare atualizará o site automaticamente!
+
+### Opção 2: Deploy Direto pelo Terminal (Wrangler CLI)
+Se preferir enviar direto do seu computador para o Cloudflare Pages:
+```bash
+npm run pages:deploy
+```
+
+---
+
+## 🚀 Como Hospedar (Deploy Manual na HostGator / cPanel)
 
 O site foi arquitetado para ser **100% estático**. Isso significa que ele não precisa de um servidor Node.js rodando (como o Render ou Vercel). O navegador do próprio cliente faz o trabalho de buscar os dados no Supabase.
 

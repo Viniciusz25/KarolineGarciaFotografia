@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "pages:deploy": "npm run build && npx wrangler pages deploy out --project-name=karoline-garcia-fotografia"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
