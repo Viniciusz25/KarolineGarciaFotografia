@@ -387,30 +387,105 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* Indicador Central de Rolagem + Localização */}
+        {/* Indicador Central de Rolagem + Atalho Campanha de Natal */}
         <motion.div
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center pointer-events-none"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
         >
-          <div className="hidden md:flex items-center gap-2 bg-black/45 backdrop-blur-md border border-white/15 px-4 py-1.5 rounded-full mb-3">
-            <MapPin className="w-3 h-3 text-primary" />
-            <span className="text-white/85 text-[9px] uppercase tracking-[0.25em]">
-              São Paulo & Região · Agenda Aberta
+          <a
+            href="#campanha-natal"
+            className="flex items-center gap-2.5 bg-[#120f0e]/75 hover:bg-[#120f0e]/95 backdrop-blur-md border border-[#cba37b]/40 px-4 py-1.5 rounded-full mb-3 transition-all group"
+          >
+            <Sparkles className="w-3 h-3 text-[#cba37b] group-hover:rotate-12 transition-transform" />
+            <span className="text-[#f4ede8] text-[9px] uppercase tracking-[0.25em]">
+              Especial de Natal · Vagas Limitadas
             </span>
-          </div>
-          <div className="w-5 h-8 border border-white/30 rounded-full flex justify-center p-1 mb-2">
+          </a>
+          <div className="w-5 h-8 border border-white/30 rounded-full flex justify-center p-1 mb-2 pointer-events-none">
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
               className="w-1 h-1 bg-white rounded-full"
             />
           </div>
-          <span className="text-white/70 text-[8px] uppercase tracking-[0.3em]">
+          <span className="text-white/70 text-[8px] uppercase tracking-[0.3em] pointer-events-none">
             Role para explorar
           </span>
         </motion.div>
+      </section>
+
+      {/* 1.2 Banner Minimalista — Campanha de Natal */}
+      <section
+        id="campanha-natal"
+        className="w-full bg-[#120f0e] text-[#f4ede8] border-y border-[#cba37b]/20 py-14 md:py-20 px-6 md:px-12 snap-start relative overflow-hidden"
+      >
+        {/* Brilho sutil de fundo */}
+        <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[520px] h-[220px] rounded-full bg-[#cba37b]/10 blur-3xl" />
+
+        <div className="container mx-auto max-w-6xl relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.7 }}
+            className="border border-[#cba37b]/25 bg-white/[0.02] rounded-2xl p-8 md:p-12 lg:p-14 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10"
+          >
+            {/* Texto e Destaques Minimalistas */}
+            <div className="max-w-2xl space-y-4">
+              <div className="inline-flex items-center gap-2.5 text-[10px] uppercase tracking-[0.35em] text-[#cba37b]">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Edição Limitada · Temporada de Natal</span>
+              </div>
+
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-light tracking-wide leading-[1.15] text-white">
+                Especial de Natal{" "}
+                <span className="italic text-[#cba37b]">Família &amp; Pet</span>
+              </h2>
+
+              <p className="text-white/70 font-light text-sm md:text-base leading-relaxed">
+                Retratos atemporais com estética acolhedora e direção afetiva para
+                celebrar o fim de ano com quem você mais ama — em sessões
+                exclusivas pensadas para famílias, casais e pets.
+              </p>
+
+              <div className="pt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] uppercase tracking-[0.22em] text-white/60">
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#cba37b]" />
+                  Vagas Limitadas na Agenda
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#cba37b]" />
+                  Social &amp; Pet Friendly
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#cba37b]" />
+                  Entrega antes do Natal
+                </span>
+              </div>
+            </div>
+
+            {/* Ações / CTA */}
+            <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3 w-full lg:w-auto shrink-0">
+              <a
+                href="https://wa.me/5511940878269?text=Ol%C3%A1%2C%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Especial%20de%20Natal%20e%20consultar%20as%20datas%20dispon%C3%ADveis."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-3 bg-[#cba37b] text-[#120f0e] px-8 py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all shadow-lg"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Reservar Ensaio de Natal
+              </a>
+              <Link
+                href="/ensaios"
+                className="inline-flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.25em] text-white/65 hover:text-[#cba37b] px-4 py-2 transition-colors"
+              >
+                Conhecer Estilos de Ensaio <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
       {/* 1.5 Galeria Mosaico Dinâmica Unificada */}
