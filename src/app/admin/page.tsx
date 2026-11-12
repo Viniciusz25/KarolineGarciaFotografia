@@ -165,6 +165,7 @@ const ALBUM_LINK_SETTING_KEYS = new Set([
   "home_masonry_album",
   "home_masonry_album_2",
   "sobre_pets_album",
+  "home_sobre_mosaic_1",
 ]);
 
 function SortableItem({

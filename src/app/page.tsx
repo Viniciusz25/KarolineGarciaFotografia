@@ -647,31 +647,17 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex-1 relative w-full aspect-[4/3] md:aspect-square">
-              {/* Main Photo */}
-              <div className="absolute right-0 top-0 w-4/5 h-4/5 rounded-t-[40px] rounded-br-[40px] rounded-bl-sm overflow-hidden shadow-2xl border border-accent bg-muted">
-                {settings.home_sobre_mosaic_1 && (
-                  <Image
-                    src={settings.home_sobre_mosaic_1}
-                    alt="Karoline Garcia"
-                    fill
-                    className="object-cover"
-                    style={{
-                      objectPosition:
-                        settingsPositions.home_sobre_mosaic_1 || "50% 50%",
-                    }}
-                  />
-                )}
-              </div>
-              {/* Polaroids Decorativas */}
-              <div className="absolute left-0 bottom-10 w-2/5 aspect-[3/4] bg-white p-2 pb-8 shadow-xl -rotate-6 hover:-rotate-2 transition-transform duration-500 z-10 hidden md:block">
+            <div className="flex-1 w-full grid grid-cols-2 gap-5 md:gap-8 items-center">
+              {/* Polaroid 1 */}
+              <div className="relative w-full aspect-[3/4] bg-white p-2.5 md:p-3.5 pb-9 md:pb-11 shadow-xl -rotate-2 hover:rotate-0 transition-transform duration-500 rounded-sm">
                 <div className="relative w-full h-full overflow-hidden bg-muted">
                   {settings.home_sobre_mosaic_2 && (
                     <Image
                       src={settings.home_sobre_mosaic_2}
                       alt="Polaroid 1"
                       fill
-                      className="object-cover"
+                      className="object-cover select-none"
+                      draggable={false}
                       style={{
                         objectPosition:
                           settingsPositions.home_sobre_mosaic_2 || "50% 50%",
@@ -679,15 +665,21 @@ export default function Home() {
                     />
                   )}
                 </div>
+                <div className="absolute bottom-2.5 left-3.5 text-[11px] font-serif italic text-black/55">
+                  memórias reais
+                </div>
               </div>
-              <div className="absolute left-24 bottom-0 w-2/5 aspect-[3/4] bg-white p-2 pb-8 shadow-xl rotate-3 hover:rotate-0 transition-transform duration-500 z-20 hidden md:block">
+
+              {/* Polaroid 2 */}
+              <div className="relative w-full aspect-[3/4] bg-white p-2.5 md:p-3.5 pb-9 md:pb-11 shadow-xl rotate-2 hover:rotate-0 transition-transform duration-500 rounded-sm md:mt-8">
                 <div className="relative w-full h-full overflow-hidden bg-muted">
                   {settings.home_sobre_mosaic_3 && (
                     <Image
                       src={settings.home_sobre_mosaic_3}
                       alt="Polaroid 2"
                       fill
-                      className="object-cover"
+                      className="object-cover select-none"
+                      draggable={false}
                       style={{
                         objectPosition:
                           settingsPositions.home_sobre_mosaic_3 || "50% 50%",
@@ -695,7 +687,7 @@ export default function Home() {
                     />
                   )}
                 </div>
-                <div className="absolute bottom-2 right-4 text-xs font-serif italic text-black opacity-60">
+                <div className="absolute bottom-2.5 right-3.5 text-[11px] font-serif italic text-black/60">
                   fotografar é sentir ♥
                 </div>
               </div>
