@@ -49,6 +49,11 @@ export const metadata: Metadata = {
     description:
       "Ensaios sociais e fotografia pet com um olhar sensível, natural e atemporal.",
   },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"],
+    apple: ["/icon.svg"],
+  },
 };
 
 export default function RootLayout({
