@@ -514,8 +514,12 @@ export default function Home() {
                         src={photo.url}
                         alt={photo.category}
                         fill
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 select-none"
+                        draggable={false}
                       />
+                      <span className="pointer-events-none select-none absolute bottom-2 right-2.5 text-[9px] font-serif italic tracking-wider text-white/60 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] z-10">
+                        @karolinegarcia.fotografia
+                      </span>
                       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
                         {masonryTitle2 && (
                           <span className="text-[10px] uppercase tracking-[0.25em] text-white/90 flex items-center gap-1.5">
@@ -542,8 +546,12 @@ export default function Home() {
                         src={photo.url}
                         alt={photo.category}
                         fill
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 select-none"
+                        draggable={false}
                       />
+                      <span className="pointer-events-none select-none absolute bottom-2 right-2.5 text-[9px] font-serif italic tracking-wider text-white/60 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] z-10">
+                        @karolinegarcia.fotografia
+                      </span>
                       <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-4">
                         {masonryTitle && (
                           <span className="text-[10px] uppercase tracking-[0.25em] text-white/90 flex items-center gap-1.5">
@@ -747,8 +755,12 @@ export default function Home() {
                     src={photo.url}
                     alt={photo.category}
                     fill
-                    className="object-cover transition-transform duration-700 group-hover/card:scale-105"
+                    className="object-cover transition-transform duration-700 group-hover/card:scale-105 select-none"
+                    draggable={false}
                   />
+                  <span className="pointer-events-none select-none absolute top-3 right-3 text-[9px] font-serif italic tracking-wider text-white/65 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] z-10">
+                    @karolinegarcia.fotografia
+                  </span>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover/card:opacity-100 transition-opacity" />
                   <div className="absolute bottom-6 left-0 right-0 text-center">
                     <span className="text-white text-[11px] uppercase tracking-[0.3em] font-medium">
@@ -1155,8 +1167,12 @@ export default function Home() {
                   src={photo.url}
                   alt="Instagram post"
                   fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105 select-none"
+                  draggable={false}
                 />
+                <span className="pointer-events-none select-none absolute bottom-2 right-2.5 text-[9px] font-serif italic tracking-wider text-white/65 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] z-10">
+                  @karolinegarcia.fotografia
+                </span>
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-300 flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

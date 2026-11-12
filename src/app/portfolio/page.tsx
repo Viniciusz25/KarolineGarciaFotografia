@@ -168,6 +168,9 @@ function DynamicGalleryContent() {
                       {item.hasVideo ? "▶ Vídeo + Fotos" : "Ver Ensaio"}
                     </span>
                     <h3 className="text-white font-serif text-2xl">{item.title}</h3>
+                    <span className="pointer-events-none select-none text-[9px] font-serif italic tracking-wider text-white/55 mt-1">
+                      @karolinegarcia.fotografia
+                    </span>
                   </div>
                 </motion.div>
               </Link>

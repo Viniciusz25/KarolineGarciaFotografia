@@ -345,6 +345,7 @@ export default function AdminDashboard() {
   const [photoCategory, setPhotoCategory] = useState<string>("");
   const [photoTitle, setPhotoTitle] = useState("");
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const [applyWatermark, setApplyWatermark] = useState<boolean>(true);
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
     total: number;
@@ -931,6 +932,89 @@ export default function AdminDashboard() {
   };
 
   // -----------------------------------------------------
+  // FUNÇÃO PARA GRAVAR MARCA D'ÁGUA NA IMAGEM (CANVAS)
+  // -----------------------------------------------------
+  const applyWatermarkToImageFile = (
+    file: File,
+    watermarkText = "@karolinegarcia.fotografia"
+  ): Promise<File> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith("image/")) {
+        resolve(file);
+        return;
+      }
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0);
+
+          const minDim = Math.min(canvas.width, canvas.height);
+          const fontSize = Math.max(14, Math.round(minDim * 0.022));
+          const paddingX = Math.max(16, Math.round(canvas.width * 0.025));
+          const paddingY = Math.max(16, Math.round(canvas.height * 0.025));
+
+          ctx.save();
+          ctx.font = `italic ${fontSize}px Georgia, "Times New Roman", serif`;
+          ctx.textAlign = "right";
+          ctx.textBaseline = "bottom";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+          ctx.shadowBlur = Math.max(4, Math.round(fontSize * 0.25));
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+          ctx.fillText(
+            watermarkText,
+            canvas.width - paddingX,
+            canvas.height - paddingY
+          );
+          ctx.restore();
+
+          const outputType =
+            file.type === "image/png" || file.type === "image/webp"
+              ? file.type
+              : "image/jpeg";
+
+          canvas.toBlob(
+            (blob) => {
+              URL.revokeObjectURL(objectUrl);
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const watermarkedFile = new File([blob], file.name, {
+                type: outputType,
+                lastModified: Date.now(),
+              });
+              resolve(watermarkedFile);
+            },
+            outputType,
+            0.92
+          );
+        } catch {
+          URL.revokeObjectURL(objectUrl);
+          resolve(file);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      img.src = objectUrl;
+    });
+  };
+
+  // -----------------------------------------------------
   // UPLOAD DE FOTOS (EM MASSA OU PARA ENSAIO)
   // -----------------------------------------------------
   const handleUploadPhoto = async (e: React.FormEvent, forcedAlbumId?: string) => {
@@ -953,7 +1037,10 @@ export default function AdminDashboard() {
       setUploadProgress({ current: 0, total: photoFiles.length });
 
       for (let i = 0; i < photoFiles.length; i++) {
-        const file = photoFiles[i];
+        const rawFile = photoFiles[i];
+        const file = applyWatermark
+          ? await applyWatermarkToImageFile(rawFile, "@karolinegarcia.fotografia")
+          : rawFile;
         const fileExt = file.name.split(".").pop();
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
         const filePath = `${targetCategory}/${fileName}`;
@@ -1925,6 +2012,22 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     )}
+
+                    <label className="flex items-center gap-2.5 text-xs text-[#2d2422]/80 cursor-pointer select-none bg-[#f4ede8]/60 p-3 rounded-xl border border-[#2d2422]/10">
+                      <input
+                        type="checkbox"
+                        checked={applyWatermark}
+                        onChange={(e) => setApplyWatermark(e.target.checked)}
+                        className="w-4 h-4 accent-[#cba37b] rounded cursor-pointer"
+                      />
+                      <span>
+                        Gravar marca d&apos;água{" "}
+                        <strong className="font-serif italic text-[#2d2422]">
+                          @karolinegarcia.fotografia
+                        </strong>{" "}
+                        nas fotos
+                      </span>
+                    </label>
 
                     <button
                       type="submit"

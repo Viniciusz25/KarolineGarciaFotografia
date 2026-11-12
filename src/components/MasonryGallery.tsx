@@ -110,6 +110,9 @@ export default function MasonryGallery({ photos }: MasonryGalleryProps) {
                   <Maximize2 size={14} />
                 </span>
               </div>
+              <span className="pointer-events-none select-none absolute bottom-2.5 left-3 text-[10px] font-serif italic tracking-wider text-white/65 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] z-10">
+                @karolinegarcia.fotografia
+              </span>
             </motion.div>
           );
         })}
@@ -171,10 +174,14 @@ export default function MasonryGallery({ photos }: MasonryGalleryProps) {
                   src={photos[currentIndex].url}
                   alt={photos[currentIndex].alt || "Fotografia ampliada"}
                   fill
-                  className="object-contain"
+                  className="object-contain select-none"
                   quality={90}
                   priority
+                  draggable={false}
                 />
+                <span className="pointer-events-none select-none absolute bottom-4 right-6 text-xs md:text-sm font-serif italic tracking-wider text-white/65 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] z-20">
+                  @karolinegarcia.fotografia
+                </span>
               </motion.div>
             </div>
 

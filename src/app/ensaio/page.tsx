@@ -294,8 +294,11 @@ function EnsaioContent() {
                   className="relative w-full overflow-hidden group cursor-pointer break-inside-avoid bg-muted mb-4 rounded-xl shadow-sm"
                   onClick={() => openLightbox(idx)}
                 >
-                  <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.4 }} className="w-full h-full relative">
-                    <img src={photo.url} alt={photo.title || "Foto do ensaio"} className="w-full h-auto object-cover" loading="lazy" />
+                  <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.4 }} className="w-full h-full relative" onContextMenu={(e) => e.preventDefault()}>
+                    <img src={photo.url} alt={photo.title || "Foto do ensaio"} className="w-full h-auto object-cover select-none" loading="lazy" draggable={false} />
+                    <span className="pointer-events-none select-none absolute bottom-2.5 left-3 text-[10px] font-serif italic tracking-wider text-white/65 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] z-10">
+                      @karolinegarcia.fotografia
+                    </span>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-4">
                       <span className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30">
                         <Maximize2 size={14} />
@@ -354,17 +357,26 @@ function EnsaioContent() {
                 </>
               )}
               
-              <motion.img
-                key={selectedIndex}
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                src={photos[selectedIndex].url}
-                alt={photos[selectedIndex].title || "Foto ampliada"}
-                className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl mb-14"
+              <div
+                className="relative flex items-center justify-center mb-14"
                 onClick={(e) => e.stopPropagation()}
-              />
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <motion.img
+                  key={selectedIndex}
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  src={photos[selectedIndex].url}
+                  alt={photos[selectedIndex].title || "Foto ampliada"}
+                  className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl select-none"
+                  draggable={false}
+                />
+                <span className="pointer-events-none select-none absolute bottom-3 right-4 text-xs md:text-sm font-serif italic tracking-wider text-white/65 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] z-20">
+                  @karolinegarcia.fotografia
+                </span>
+              </div>
 
               {/* Filmstrip Thumbnails */}
               {photos.length > 1 && (
