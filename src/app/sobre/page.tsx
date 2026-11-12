@@ -106,7 +106,7 @@ export default function SobrePage() {
                
                <div className="space-y-4 text-muted-foreground font-light text-sm leading-relaxed max-w-2xl">
                  <p>
-                   Com formação em Fotografia pelo Senac e atuando em São Paulo, encontrei na fotografia um propósito claro: eternizar os vínculos que mais importam. Seja registrando os momentos singulares de uma família ou a pureza incondicional de um pet, meu trabalho é movido pelas histórias que nos conectam.
+                   Atuando em São Paulo, encontrei na fotografia um propósito claro: eternizar os vínculos que mais importam. Seja registrando os momentos singulares de uma família ou a pureza incondicional de um pet, meu trabalho é movido pelas histórias que nos conectam.
                  </p>
                  <p>
                    Atuando nas áreas social e pet, percebi rapidamente como esses dois mundos se complementam. Afinal, nossos animais de estimação são capítulos essenciais da nossa história familiar. Eles dividem nossos dias e merecem ser lembrados com a mesma sensibilidade e respeito com que guardamos as memórias das pessoas que amamos.

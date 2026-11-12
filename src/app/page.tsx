@@ -602,34 +602,6 @@ export default function Home() {
                 todas as vezes que você olhar para trás.
               </p>
 
-              {/* Selos de Confiança & Credenciais */}
-              <div className="grid grid-cols-3 gap-4 pt-4 pb-2 border-y border-accent max-w-lg">
-                <div>
-                  <span className="font-serif text-lg md:text-xl text-foreground flex items-center gap-1.5">
-                    <Award className="w-4 h-4 text-primary" /> Senac SP
-                  </span>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                    Formação Profissional
-                  </p>
-                </div>
-                <div>
-                  <span className="font-serif text-lg md:text-xl text-foreground flex items-center gap-1.5">
-                    100% Natural
-                  </span>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                    Zero Poses Forçadas
-                  </p>
-                </div>
-                <div>
-                  <span className="font-serif text-lg md:text-xl text-foreground flex items-center gap-1">
-                    5.0 <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-                  </span>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-                    Clientes Encantados
-                  </p>
-                </div>
-              </div>
-
               <div className="pt-4 flex flex-wrap items-center gap-6">
                 <Link
                   href="/sobre"
