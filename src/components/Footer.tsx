@@ -148,14 +148,6 @@ export default function Footer({ inHome = false }: { inHome?: boolean } = {}) {
             Desenvolvido com ♥
           </p>
         </div>
-        {/* Easter Egg Piratinha */}
-        <div className="absolute bottom-0 right-4 md:right-24 w-16 h-16 md:w-20 md:h-20 z-50 overflow-hidden cursor-pointer group">
-          <img
-            src="/pirata.png"
-            alt="Pirata Easter Egg"
-            className="w-full h-full object-contain transform translate-y-12 group-hover:translate-y-0 transition-transform duration-500 ease-out hover:animate-pulse"
-          />
-        </div>
 
       </div>
     </footer>
