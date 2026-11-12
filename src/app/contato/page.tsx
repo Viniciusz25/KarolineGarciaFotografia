@@ -65,7 +65,7 @@ export default function ContatoPage() {
       formData.message.trim(),
     ].filter(Boolean);
 
-    const whatsappUrl = `https://wa.me/5511940878269?text=${encodeURIComponent(lines.join("\n"))}`;
+    const whatsappUrl = `https://wa.me/5511922880601?text=${encodeURIComponent(lines.join("\n"))}`;
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
     setSubmitted(true);
   };
@@ -152,8 +152,8 @@ export default function ContatoPage() {
                 </div>
                 <div>
                   <h3 className="font-serif text-lg text-[#2d2422] mb-1">WhatsApp</h3>
-                  <a href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento." target="_blank" rel="noopener noreferrer" className="text-[#2d2422]/70 text-sm mb-1 hover:text-[#cba37b] transition-colors block">
-                    (11) 94087-8269
+                  <a href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento." target="_blank" rel="noopener noreferrer" className="text-[#2d2422]/70 text-sm mb-1 hover:text-[#cba37b] transition-colors block">
+                    (11) 92288-0601
                   </a>
                   <span className="text-[10px] text-[#2d2422]/50 uppercase tracking-wider">Resposta rápida por aqui!</span>
                 </div>
@@ -322,7 +322,7 @@ export default function ContatoPage() {
             </div>
           </div>
           <a
-            href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
+            href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white bg-[#0f0c0b] px-8 py-3 rounded hover:bg-[#cba37b] transition-colors shrink-0"

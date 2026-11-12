@@ -105,7 +105,7 @@ export default function Navbar() {
 
           <div className="hidden lg:block">
             <Link
-              href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
+              href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
               target="_blank"
               rel="noopener noreferrer"
               className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
@@ -151,7 +151,7 @@ export default function Navbar() {
               </Link>
             ))}
             <Link
-              href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
+              href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento."
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setIsMobileMenuOpen(false)}

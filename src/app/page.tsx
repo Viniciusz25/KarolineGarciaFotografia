@@ -469,7 +469,7 @@ export default function Home() {
             {/* Ações / CTA */}
             <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-3 w-full lg:w-auto shrink-0">
               <a
-                href="https://wa.me/5511940878269?text=Ol%C3%A1%2C%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Especial%20de%20Natal%20e%20consultar%20as%20datas%20dispon%C3%ADveis."
+                href="https://wa.me/5511922880601?text=Ol%C3%A1%2C%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Especial%20de%20Natal%20e%20consultar%20as%20datas%20dispon%C3%ADveis."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-3 bg-[#cba37b] text-[#120f0e] px-8 py-4 rounded-full text-[11px] uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all shadow-lg"
@@ -882,7 +882,7 @@ export default function Home() {
 
               <div className="pt-8 mt-8 border-t border-accent relative z-10 flex items-center justify-between gap-4">
                 <a
-                  href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Ensaio%20Social."
+                  href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Ensaio%20Social."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-primary hover:text-foreground transition-colors"
@@ -941,7 +941,7 @@ export default function Home() {
 
               <div className="pt-8 mt-8 border-t border-accent relative z-10 flex items-center justify-between gap-4">
                 <a
-                  href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Ensaio%20Pet."
+                  href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20saber%20mais%20sobre%20o%20Ensaio%20Pet."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-primary hover:text-foreground transition-colors"
@@ -1111,7 +1111,7 @@ export default function Home() {
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center text-[10px] uppercase tracking-widest font-medium text-white bg-primary px-8 py-4 rounded hover:bg-white hover:text-black transition-all shadow-lg"
-              href="https://wa.me/5511940878269?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento%20e%20consultar%20disponibilidade."
+              href="https://wa.me/5511922880601?text=Olá,%20Karoline!%20Gostaria%20de%20solicitar%20um%20orçamento%20e%20consultar%20disponibilidade."
             >
               <MessageCircle className="mr-3 w-4 h-4" /> Solicitar Orçamento no WhatsApp
             </a>
