@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase, CDN_MANIFEST } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -599,6 +599,25 @@ export default function AdminDashboard() {
     let optimizedCount = 0;
 
     try {
+      // Passo 0: Migrar links do banco que já possuem cópia comprimida no CDN da Cloudflare (/storage-cdn/...)
+      for (const [oldSupaUrl, cdnUrl] of Object.entries(CDN_MANIFEST)) {
+        await Promise.all([
+          supabase.from("photos").update({ url: cdnUrl }).eq("url", oldSupaUrl),
+          supabase
+            .from("albums")
+            .update({ cover_url: cdnUrl })
+            .eq("cover_url", oldSupaUrl),
+          supabase
+            .from("categories")
+            .update({ cover_url: cdnUrl })
+            .eq("cover_url", oldSupaUrl),
+          supabase
+            .from("site_settings")
+            .update({ url: cdnUrl })
+            .eq("url", oldSupaUrl),
+        ]);
+      }
+
       // Coletar todos os caminhos atualmente em uso no banco
       const usedPaths = new Set<string>();
       const addPathFromUrl = (u?: string | null) => {
@@ -1885,14 +1904,14 @@ export default function AdminDashboard() {
         {/* ============================================================================================== */}
         {/* BARRA DE OTIMIZAÇÃO DE ARMAZENAMENTO DO SUPABASE (LIBERAR COTA DE 1 GB) */}
         {/* ============================================================================================== */}
-        <div className="mb-8 bg-[#120f0e] text-[#f4ede8] border border-[#cba37b]/35 rounded-2xl p-5 md:p-6 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-1">
+        <div className="mb-8 bg-[#120f0e] text-[#f4ede8] border border-[#cba37b]/35 rounded-2xl p-5 md:p-6 shadow-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-[#cba37b] text-xs font-semibold uppercase tracking-widest">
               <Sparkles className="w-4 h-4" />
-              <span>Otimizador de Espaço do Supabase Storage</span>
+              <span>CDN Cloudflare Ativo + Limpeza do Supabase Storage</span>
             </div>
             <p className="text-xs md:text-sm text-white/75 font-light leading-relaxed max-w-3xl">
-              Novos uploads já são comprimidos automaticamente em alta definição (~220 KB por foto em vez de 15 MB). Se o seu banco atingiu o limite gratuito de 1 GB (<em>exceeded its quota Storage</em>), clique ao lado para limpar arquivos antigos não usados e comprimir as fotos pesadas já cadastradas.
+              Todas as 172 fotos atuais já estão comprimidas e hospedadas gratuitamente no <strong>Cloudflare Pages CDN</strong> (sem gastar tráfego ou espaço do Supabase!). Para zerar imediatamente o aviso <em>exceeded its quota Storage</em> no Supabase, clique em <strong>Copiar SQL de Limpeza</strong> abaixo e cole no SQL Editor do Supabase (ou esvazie o bucket <code>fotos</code> no painel do Supabase).
             </p>
             {optimizerStatus && (
               <div className="pt-2 space-y-1.5">
@@ -1923,24 +1942,44 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <button
-            type="button"
-            disabled={optimizingStorage}
-            onClick={handleOptimizeStorage}
-            className="bg-[#cba37b] hover:bg-white text-[#120f0e] font-semibold text-xs uppercase tracking-widest px-6 py-3.5 rounded-xl transition-all shadow-lg flex items-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
-          >
-            {optimizingStorage ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Otimizando Banco...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Liberar Espaço Agora
-              </>
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                const sql = `CREATE POLICY "Admin delete fotos" ON storage.objects FOR DELETE USING (bucket_id = 'fotos');\nDELETE FROM storage.objects WHERE bucket_id = 'fotos';`;
+                navigator.clipboard.writeText(sql);
+                showToast(
+                  "Comando SQL copiado! Cole no SQL Editor do Supabase e clique em Run para zerar o Storage."
+                );
+                window.open(
+                  "https://supabase.com/dashboard/project/qhaoibxvujwzadcglrpq/sql/new",
+                  "_blank"
+                );
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium text-xs uppercase tracking-wider px-4 py-3.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+            >
+              Copiar SQL &amp; Abrir Supabase
+            </button>
+
+            <button
+              type="button"
+              disabled={optimizingStorage}
+              onClick={handleOptimizeStorage}
+              className="bg-[#cba37b] hover:bg-white text-[#120f0e] font-semibold text-xs uppercase tracking-widest px-5 py-3.5 rounded-xl transition-all shadow-lg flex items-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+            >
+              {optimizingStorage ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Otimizando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Migrar &amp; Limpar Banco
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* ============================================================================================== */}
