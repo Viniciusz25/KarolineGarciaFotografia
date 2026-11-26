@@ -20,6 +20,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://karoline-garcia-fotografia.pages.dev"),
   title: {
     default: "Karoline Garcia | Fotografia Social e Pet em São Paulo",
     template: "%s | Karoline Garcia Fotografia",
@@ -41,18 +42,31 @@ export const metadata: Metadata = {
       "Transformando instantes autênticos e o amor pelos pets em memórias eternas. Conheça o portfólio e agende seu ensaio em São Paulo.",
     type: "website",
     locale: "pt_BR",
+    url: "https://karoline-garcia-fotografia.pages.dev",
     siteName: "Karoline Garcia Fotografia",
+    images: [
+      {
+        url: "/og-logo.png",
+        width: 1200,
+        height: 630,
+        alt: "Karoline Garcia Fotografia",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Karoline Garcia | Fotografia Social e Pet",
     description:
       "Ensaios sociais e fotografia pet com um olhar sensível, natural e atemporal.",
+    images: ["/og-logo.png"],
   },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: ["/icon.svg"],
-    apple: ["/icon.svg"],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/logo-kg.png", type: "image/png" },
+    ],
+    shortcut: ["/logo-kg.png"],
+    apple: ["/logo-kg.png"],
   },
 };
 

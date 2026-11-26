@@ -34,9 +34,9 @@ type Photo = {
 type Testimonial = {
   id: number;
   name: string;
+  initials: string;
   category: string;
   text: string;
-  avatar: string;
   rating: number;
 };
 
@@ -44,28 +44,25 @@ const testimonials: Testimonial[] = [
   {
     id: 1,
     name: "Juliana & Rafael",
+    initials: "JR",
     category: "Ensaio Casal",
     text: "A Karol mandou super bem! As fotos ficaram incríveis, superou todas as nossas expectativas. Profissional incrível e muito talentosa!",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop",
     rating: 5,
   },
   {
     id: 2,
     name: "Camila & Thor",
+    initials: "CT",
     category: "Ensaio Pet",
     text: "Nosso pet ficou super à vontade e o resultado foi simplesmente perfeito! Cada detalhe foi capturado com muito amor.",
-    avatar:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop",
     rating: 5,
   },
   {
     id: 3,
     name: "Larissa",
+    initials: "L",
     category: "Ensaio Gestante",
     text: "Experiência maravilhosa! As fotos da gravidez ficaram emocionantes e vamos guardar para sempre essas lembranças.",
-    avatar:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop",
     rating: 5,
   },
 ];
@@ -952,13 +949,8 @@ export default function Home() {
                   &ldquo;
                 </span>
                 <div className="flex items-center gap-4 mb-6 relative z-10">
-                  <div className="w-12 h-12 rounded-full overflow-hidden relative ring-2 ring-primary/20">
-                    <Image
-                      src={test.avatar}
-                      alt={test.name}
-                      fill
-                      className="object-cover"
-                    />
+                  <div className="w-12 h-12 rounded-full bg-primary/15 border border-primary/35 flex items-center justify-center text-primary font-serif text-sm tracking-wider">
+                    {test.initials}
                   </div>
                   <div>
                     <div className="flex text-primary mb-1 gap-0.5">

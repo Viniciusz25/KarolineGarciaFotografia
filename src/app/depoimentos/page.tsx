@@ -11,7 +11,7 @@ const depoimentos = [
     name: "Mariana & Carlos",
     type: "Casamento",
     text: "O olhar da Karoline é algo fora do comum. Ela não tirou apenas fotos do nosso casamento, ela capturou a exata energia daquele dia. Toda vez que abrimos o álbum, sentimos como se estivéssemos lá novamente. Um trabalho de pura arte e sensibilidade.",
-    image: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=800&auto=format&fit=crop",
+    image: "/storage-cdn/capas/social/ojherh5v80q-1785275354823.jpg",
     rating: 5,
     highlight: true,
   },
@@ -20,7 +20,7 @@ const depoimentos = [
     name: "Família Silva",
     type: "Ensaio Pet",
     text: "Estávamos super preocupados porque nosso cachorro é muito agitado e não para um segundo, mas a experiência foi mágica! A Karol teve uma paciência absurda e conseguiu registrar a personalidade dele de um jeito que nós nunca conseguimos. Virou um quadro na nossa sala!",
-    image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=400&auto=format&fit=crop",
+    image: "/storage-cdn/capas/pet/14rjzqzsaoeg-1785273434349.jpg",
     rating: 5,
     highlight: false,
   },
@@ -29,7 +29,7 @@ const depoimentos = [
     name: "Juliana Mendes",
     type: "Gestante",
     text: "Eu confesso que sempre fui tímida para fotos, mas a Karol me fez me sentir a mulher mais linda do mundo. O ensaio foi leve, natural, zero daquelas poses forçadas. O resultado é tão elegante que parece ter saído de uma revista de luxo.",
-    image: "https://images.unsplash.com/photo-1517409217696-9f4a99d429dc?q=80&w=400&auto=format&fit=crop",
+    image: "/storage-cdn/social/06ctlqglfadr-1785275389271.jpg",
     rating: 5,
     highlight: false,
   },
@@ -38,7 +38,7 @@ const depoimentos = [
     name: "Amanda Costa",
     type: "Ensaio Pet & Família",
     text: "É impressionante o respeito e a empatia que a Karol tem pelos animais. Ela soube exatamente como respeitar o tempo da minha gata. As fotos ficaram com uma luz e uma edição tão poéticas que me emociono toda vez que olho.",
-    image: "https://images.unsplash.com/photo-1517849845537-4d257902454a?q=80&w=400&auto=format&fit=crop",
+    image: "/storage-cdn/capas/pet/jhpi9pohm1j-1785273680539.jpg",
     rating: 5,
     highlight: false,
   }
@@ -55,8 +55,8 @@ export default function DepoimentosPage() {
       <section className="relative w-full h-[60vh] md:h-[70vh] bg-[#0a0807] text-[#f4ede8] overflow-hidden flex flex-col justify-center items-center text-center">
         <div className="absolute inset-0">
           <Image 
-            src="https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?q=80&w=2000&auto=format&fit=crop" 
-            alt="Casamento Emocionante" 
+            src="/storage-cdn/capas/social/ojherh5v80q-1785275354823.jpg" 
+            alt="Ensaio Emocionante" 
             fill 
             className="object-cover opacity-20"
           />
