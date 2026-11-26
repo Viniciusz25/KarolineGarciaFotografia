@@ -385,6 +385,17 @@ export default function AdminDashboard() {
   // Upload States for Settings
   const [uploadingSettingKey, setUploadingSettingKey] = useState<string | null>(null);
 
+  // Storage Optimizer States
+  const [optimizingStorage, setOptimizingStorage] = useState(false);
+  const [optimizerStatus, setOptimizerStatus] = useState<{
+    step: string;
+    current: number;
+    total: number;
+    freedMB: number;
+    orphansRemoved: number;
+    optimizedCount: number;
+  } | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -454,14 +465,393 @@ export default function AdminDashboard() {
   };
 
   // -----------------------------------------------------
+  // COMPRESSÃO INTELIGENTE + MARCA D'ÁGUA (CANVAS)
+  // Reduz fotos de 15 MB da câmera para ~220 KB mantendo qualidade Full HD+
+  // -----------------------------------------------------
+  const compressAndPrepareImage = (
+    input: File | Blob,
+    fileNameHint = "photo.jpg",
+    options?: {
+      maxDimension?: number;
+      quality?: number;
+      watermarkText?: string | null;
+    }
+  ): Promise<File> => {
+    const maxDim = options?.maxDimension ?? 1920;
+    const quality = options?.quality ?? 0.84;
+    const watermarkText = options?.watermarkText ?? null;
+
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(input);
+      img.onload = () => {
+        try {
+          let targetW = img.naturalWidth;
+          let targetH = img.naturalHeight;
+
+          if (targetW > maxDim || targetH > maxDim) {
+            if (targetW >= targetH) {
+              targetH = Math.round((targetH * maxDim) / targetW);
+              targetW = maxDim;
+            } else {
+              targetW = Math.round((targetW * maxDim) / targetH);
+              targetH = maxDim;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl);
+            resolve(
+              input instanceof File
+                ? input
+                : new File([input], fileNameHint, { type: "image/jpeg" })
+            );
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+
+          if (watermarkText) {
+            const minSide = Math.min(targetW, targetH);
+            const fontSize = Math.max(14, Math.round(minSide * 0.022));
+            const paddingX = Math.max(16, Math.round(targetW * 0.025));
+            const paddingY = Math.max(16, Math.round(targetH * 0.025));
+
+            ctx.save();
+            ctx.font = `italic ${fontSize}px Georgia, "Times New Roman", serif`;
+            ctx.textAlign = "right";
+            ctx.textBaseline = "bottom";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+            ctx.shadowBlur = Math.max(4, Math.round(fontSize * 0.25));
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+            ctx.fillText(watermarkText, targetW - paddingX, targetH - paddingY);
+            ctx.restore();
+          }
+
+          canvas.toBlob(
+            (blob) => {
+              URL.revokeObjectURL(objectUrl);
+              if (!blob) {
+                resolve(
+                  input instanceof File
+                    ? input
+                    : new File([input], fileNameHint, { type: "image/jpeg" })
+                );
+                return;
+              }
+              const cleanName = fileNameHint.replace(/\.[^.]+$/, "") + ".jpg";
+              resolve(
+                new File([blob], cleanName, {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                })
+              );
+            },
+            "image/jpeg",
+            quality
+          );
+        } catch {
+          URL.revokeObjectURL(objectUrl);
+          resolve(
+            input instanceof File
+              ? input
+              : new File([input], fileNameHint, { type: "image/jpeg" })
+          );
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(
+          input instanceof File
+            ? input
+            : new File([input], fileNameHint, { type: "image/jpeg" })
+        );
+      };
+      img.src = objectUrl;
+    });
+  };
+
+  // -----------------------------------------------------
+  // OTIMIZADOR DE ARMAZENAMENTO (LIBERAR ESPAÇO NO SUPABASE)
+  // 1) Remove arquivos órfãos não usados no banco
+  // 2) Comprime fotos existentes > 500 KB (de 15 MB para ~220 KB)
+  // -----------------------------------------------------
+  const handleOptimizeStorage = async () => {
+    if (
+      !window.confirm(
+        "Iniciar a otimização automática do Supabase Storage?\n\n1. Remove arquivos antigos/órfãos que não estão mais em uso.\n2. Comprime as fotos pesadas (de 10-15 MB para ~250 KB em alta definição) liberando até 90% do espaço de armazenamento."
+      )
+    ) {
+      return;
+    }
+
+    setOptimizingStorage(true);
+    let freedBytes = 0;
+    let orphansRemoved = 0;
+    let optimizedCount = 0;
+
+    try {
+      // Coletar todos os caminhos atualmente em uso no banco
+      const usedPaths = new Set<string>();
+      const addPathFromUrl = (u?: string | null) => {
+        if (!u) return;
+        const parts = u.split("/fotos/");
+        if (parts[1]) usedPaths.add(decodeURIComponent(parts[1].split("?")[0]));
+      };
+
+      photos.forEach((p) => addPathFromUrl(p.url));
+      albums.forEach((a) => addPathFromUrl(a.cover_url));
+      categories.forEach((c) => addPathFromUrl(c.cover_url));
+      settings.forEach((s) => addPathFromUrl(s.url));
+
+      // 1. Listar pastas do bucket "fotos" e apagar arquivos órfãos
+      setOptimizerStatus({
+        step: "Procurando e removendo arquivos antigos não utilizados...",
+        current: 0,
+        total: 1,
+        freedMB: 0,
+        orphansRemoved: 0,
+        optimizedCount: 0,
+      });
+
+      const listBucketRecursive = async (
+        prefix = ""
+      ): Promise<{ path: string; size: number }[]> => {
+        const { data, error } = await supabase.storage
+          .from("fotos")
+          .list(prefix, { limit: 1000 });
+        if (error || !data) return [];
+        let results: { path: string; size: number }[] = [];
+        for (const item of data) {
+          const fullPath = prefix ? `${prefix}/${item.name}` : item.name;
+          if (!item.id) {
+            const sub = await listBucketRecursive(fullPath);
+            results = results.concat(sub);
+          } else {
+            results.push({
+              path: fullPath,
+              size: (item.metadata as any)?.size || 0,
+            });
+          }
+        }
+        return results;
+      };
+
+      const allBucketFiles = await listBucketRecursive("");
+      const orphanFiles = allBucketFiles.filter((f) => !usedPaths.has(f.path));
+
+      if (orphanFiles.length > 0) {
+        const orphanPaths = orphanFiles.map((f) => f.path);
+        const orphanBytes = orphanFiles.reduce((acc, f) => acc + f.size, 0);
+        for (let i = 0; i < orphanPaths.length; i += 50) {
+          const chunk = orphanPaths.slice(i, i + 50);
+          await supabase.storage.from("fotos").remove(chunk);
+        }
+        orphansRemoved = orphanFiles.length;
+        freedBytes += orphanBytes;
+      }
+
+      // 2. Montar fila de imagens referenciadas no banco para comprimir as que tiverem > 500 KB
+      type CompressJob = {
+        table: "photos" | "albums" | "categories" | "site_settings";
+        idOrKey: string;
+        column: "url" | "cover_url";
+        url: string;
+        folder: string;
+        watermark: boolean;
+      };
+
+      const jobs: CompressJob[] = [];
+      photos.forEach((p) => {
+        if (p.url?.includes("/fotos/")) {
+          jobs.push({
+            table: "photos",
+            idOrKey: p.id,
+            column: "url",
+            url: p.url,
+            folder: p.category || "social",
+            watermark: false,
+          });
+        }
+      });
+      albums.forEach((a) => {
+        if (
+          a.cover_url?.includes("/fotos/") &&
+          !photos.some((p) => p.url === a.cover_url)
+        ) {
+          jobs.push({
+            table: "albums",
+            idOrKey: a.id,
+            column: "cover_url",
+            url: a.cover_url,
+            folder: `capas/${a.category || "social"}`,
+            watermark: false,
+          });
+        }
+      });
+      categories.forEach((c) => {
+        if (c.cover_url?.includes("/fotos/")) {
+          jobs.push({
+            table: "categories",
+            idOrKey: c.id,
+            column: "cover_url",
+            url: c.cover_url,
+            folder: "categorias",
+            watermark: false,
+          });
+        }
+      });
+      settings.forEach((s) => {
+        if (
+          s.url?.includes("/fotos/") &&
+          !s.key.startsWith("album_video_") &&
+          !ALBUM_LINK_SETTING_KEYS.has(s.key)
+        ) {
+          jobs.push({
+            table: "site_settings",
+            idOrKey: s.key,
+            column: "url",
+            url: s.url,
+            folder: "settings",
+            watermark: false,
+          });
+        }
+      });
+
+      for (let i = 0; i < jobs.length; i++) {
+        const job = jobs[i];
+        setOptimizerStatus({
+          step: `Verificando e comprimindo fotos (${i + 1} de ${jobs.length})...`,
+          current: i + 1,
+          total: jobs.length,
+          freedMB: +(freedBytes / 1024 / 1024).toFixed(1),
+          orphansRemoved,
+          optimizedCount,
+        });
+
+        try {
+          const res = await fetch(job.url);
+          if (!res.ok) continue;
+          const originalBlob = await res.blob();
+          // Só recomprime se tiver mais de 550 KB e for imagem
+          if (
+            originalBlob.size <= 550 * 1024 ||
+            !originalBlob.type.startsWith("image/")
+          ) {
+            continue;
+          }
+
+          const compressedFile = await compressAndPrepareImage(
+            originalBlob,
+            `opt-${Date.now()}.jpg`,
+            { maxDimension: 1920, quality: 0.84 }
+          );
+
+          // Só substitui se realmente ficou menor
+          if (compressedFile.size >= originalBlob.size * 0.85) {
+            continue;
+          }
+
+          const oldPath = decodeURIComponent(
+            job.url.split("/fotos/")[1]?.split("?")[0] || ""
+          );
+          const newPath = `${job.folder}/opt-${Math.random()
+            .toString(36)
+            .substring(2, 8)}-${Date.now()}.jpg`;
+
+          // Remove o arquivo antigo gigante PRIMEIRO para liberar a cota imediatamente
+          if (oldPath) {
+            await supabase.storage.from("fotos").remove([oldPath]);
+          }
+
+          const { error: upErr } = await supabase.storage
+            .from("fotos")
+            .upload(newPath, compressedFile, {
+              contentType: "image/jpeg",
+              upsert: true,
+            });
+          if (upErr) continue;
+
+          const {
+            data: { publicUrl: newPublicUrl },
+          } = supabase.storage.from("fotos").getPublicUrl(newPath);
+
+          if (job.table === "site_settings") {
+            await supabase
+              .from("site_settings")
+              .update({ url: newPublicUrl })
+              .eq("key", job.idOrKey);
+          } else if (job.table === "photos") {
+            await supabase
+              .from("photos")
+              .update({ url: newPublicUrl })
+              .eq("id", job.idOrKey);
+            // Se algum álbum usava a mesma foto como capa, atualiza também
+            await supabase
+              .from("albums")
+              .update({ cover_url: newPublicUrl })
+              .eq("cover_url", job.url);
+          } else {
+            await supabase
+              .from(job.table)
+              .update({ [job.column]: newPublicUrl })
+              .eq("id", job.idOrKey);
+          }
+
+          freedBytes += Math.max(0, originalBlob.size - compressedFile.size);
+          optimizedCount++;
+        } catch {
+          // continua para a próxima foto
+        }
+      }
+
+      await fetchData();
+      showToast(
+        `Otimização concluída! ${optimizedCount} foto(s) comprimida(s), ${orphansRemoved} arquivo(s) órfão(s) removido(s) e ${(
+          freedBytes /
+          1024 /
+          1024
+        ).toFixed(1)} MB liberados!`
+      );
+    } catch (err: any) {
+      showToast("Erro durante a otimização: " + err.message, "error");
+    } finally {
+      setOptimizingStorage(false);
+      setOptimizerStatus(null);
+    }
+  };
+
+  // -----------------------------------------------------
   // UPLOAD DE SETTING (PERSONALIZAÇÃO DO SITE)
   // -----------------------------------------------------
-  const handleUploadSetting = async (key: string, file: File) => {
+  const handleUploadSetting = async (key: string, rawFile: File) => {
     try {
       setUploadingSettingKey(key);
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+      const file = await compressAndPrepareImage(rawFile, rawFile.name, {
+        maxDimension: 1920,
+        quality: 0.85,
+      });
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.jpg`;
       const filePath = `settings/${fileName}`;
+
+      // Remove a imagem antiga do setting no Storage para não acumular lixo
+      const oldSetting = settings.find((s) => s.key === key);
+      if (oldSetting?.url?.includes("/fotos/")) {
+        const oldPath = decodeURIComponent(
+          oldSetting.url.split("/fotos/")[1]?.split("?")[0] || ""
+        );
+        if (oldPath) {
+          await supabase.storage.from("fotos").remove([oldPath]);
+        }
+      }
 
       const { error: uploadError } = await supabase.storage
         .from("fotos")
@@ -528,13 +918,29 @@ export default function AdminDashboard() {
     try {
       let finalCoverUrl: string | undefined = undefined;
       if (catFile) {
-        const fileExt = catFile.name.split(".").pop();
-        const fileName = `cat-${Date.now()}.${fileExt}`;
+        const compressedCat = await compressAndPrepareImage(
+          catFile,
+          catFile.name,
+          { maxDimension: 1920, quality: 0.85 }
+        );
+        const fileName = `cat-${Date.now()}.jpg`;
         const filePath = `categorias/${fileName}`;
+
+        if (editingCategoryId) {
+          const oldCat = categories.find((c) => c.id === editingCategoryId);
+          if (oldCat?.cover_url?.includes("/fotos/")) {
+            const oldPath = decodeURIComponent(
+              oldCat.cover_url.split("/fotos/")[1]?.split("?")[0] || ""
+            );
+            if (oldPath) {
+              await supabase.storage.from("fotos").remove([oldPath]);
+            }
+          }
+        }
 
         const { error: uploadError } = await supabase.storage
           .from("fotos")
-          .upload(filePath, catFile);
+          .upload(filePath, compressedCat);
         if (uploadError) throw uploadError;
 
         const {
@@ -710,13 +1116,32 @@ export default function AdminDashboard() {
       let publicCoverUrl: string | undefined = albumCoverFromExistingUrl || undefined;
 
       if (albumFile) {
-        const fileExt = albumFile.name.split(".").pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const compressedAlbumCover = await compressAndPrepareImage(
+          albumFile,
+          albumFile.name,
+          { maxDimension: 1920, quality: 0.85 }
+        );
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.jpg`;
         const filePath = `capas/${albumCategory}/${fileName}`;
+
+        if (editingAlbumId) {
+          const oldAlb = albums.find((a) => a.id === editingAlbumId);
+          if (
+            oldAlb?.cover_url?.includes("/fotos/") &&
+            !photos.some((p) => p.url === oldAlb.cover_url)
+          ) {
+            const oldPath = decodeURIComponent(
+              oldAlb.cover_url.split("/fotos/")[1]?.split("?")[0] || ""
+            );
+            if (oldPath) {
+              await supabase.storage.from("fotos").remove([oldPath]);
+            }
+          }
+        }
 
         const { error: uploadError } = await supabase.storage
           .from("fotos")
-          .upload(filePath, albumFile);
+          .upload(filePath, compressedAlbumCover);
         if (uploadError) throw uploadError;
 
         const {
@@ -1039,11 +1464,12 @@ export default function AdminDashboard() {
 
       for (let i = 0; i < photoFiles.length; i++) {
         const rawFile = photoFiles[i];
-        const file = applyWatermark
-          ? await applyWatermarkToImageFile(rawFile, "@karolinegarcia.fotografia")
-          : rawFile;
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+        const file = await compressAndPrepareImage(rawFile, rawFile.name, {
+          maxDimension: 1920,
+          quality: 0.84,
+          watermarkText: applyWatermark ? "@karolinegarcia.fotografia" : null,
+        });
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.jpg`;
         const filePath = `${targetCategory}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -1456,6 +1882,67 @@ export default function AdminDashboard() {
       </div>
 
       <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+        {/* ============================================================================================== */}
+        {/* BARRA DE OTIMIZAÇÃO DE ARMAZENAMENTO DO SUPABASE (LIBERAR COTA DE 1 GB) */}
+        {/* ============================================================================================== */}
+        <div className="mb-8 bg-[#120f0e] text-[#f4ede8] border border-[#cba37b]/35 rounded-2xl p-5 md:p-6 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[#cba37b] text-xs font-semibold uppercase tracking-widest">
+              <Sparkles className="w-4 h-4" />
+              <span>Otimizador de Espaço do Supabase Storage</span>
+            </div>
+            <p className="text-xs md:text-sm text-white/75 font-light leading-relaxed max-w-3xl">
+              Novos uploads já são comprimidos automaticamente em alta definição (~220 KB por foto em vez de 15 MB). Se o seu banco atingiu o limite gratuito de 1 GB (<em>exceeded its quota Storage</em>), clique ao lado para limpar arquivos antigos não usados e comprimir as fotos pesadas já cadastradas.
+            </p>
+            {optimizerStatus && (
+              <div className="pt-2 space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between text-xs text-[#cba37b] font-medium gap-2">
+                  <span>{optimizerStatus.step}</span>
+                  <span>
+                    {optimizerStatus.freedMB} MB liberados ·{" "}
+                    {optimizerStatus.optimizedCount} fotos otimizadas ·{" "}
+                    {optimizerStatus.orphansRemoved} arquivos órfãos removidos
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#cba37b] transition-all duration-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round(
+                          (optimizerStatus.current /
+                            Math.max(1, optimizerStatus.total)) *
+                            100
+                        )
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={optimizingStorage}
+            onClick={handleOptimizeStorage}
+            className="bg-[#cba37b] hover:bg-white text-[#120f0e] font-semibold text-xs uppercase tracking-widest px-6 py-3.5 rounded-xl transition-all shadow-lg flex items-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer"
+          >
+            {optimizingStorage ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Otimizando Banco...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Liberar Espaço Agora
+              </>
+            )}
+          </button>
+        </div>
+
         {/* ============================================================================================== */}
         {/* TAB 1: ENSAIOS (ÁLBUNS) & GESTÃO DIRETA DE FOTOS DO ENSAIO */}
         {/* ============================================================================================== */}
